@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pick a Card</title>
+  <link rel="stylesheet" href="Pick.css">
+</head>
+<body>
+  <main class="pick-page">
+    <div class="pick-container">
+      <!-- Top Bar: Wallets & Timer -->
+      <div class="top-bar">
+        <!-- Main Wallet -->
+        <div class="wallet-item">
+          <span class="wallet-label">Main Wallet</span>
+          <span class="wallet-amount" id="mainWallet">50,000.00 ETB</span>
+        </div>
+
+        <!-- Play Wallet -->
+        <div class="wallet-item">
+          <span class="wallet-label">Play Wallet</span>
+          <span class="wallet-amount" id="playWallet">12,450.00 ETB</span>
+        </div>
+
+        <!-- Stake Display -->
+        <div class="wallet-item stake-item">
+          <span class="wallet-label">Stake</span>
+          <span class="wallet-amount stake-amount" id="stakeDisplay">100 ETB</span>
+        </div>
+
+        <!-- Countdown Timer -->
+        <div class="timer-item">
+          <span class="timer-label">Time Left</span>
+          <span class="timer-display" id="timerDisplay">05:00</span>
+        </div>
+      </div>
+
+      <!-- Header -->
+      <div class="pick-header">
+        <h1>Pick a Number</h1>
+        <p class="pick-subtitle">Select a number to reveal your prize</p>
+      </div>
+
+      <!-- Number Grid -->
+      <div class="number-grid" id="numberGrid">
+        <!-- Numbers 1-20 -->
+        <button class="number-btn" data-number="1">1</button>
+        <button class="number-btn" data-number="2">2</button>
+        <button class="number-btn" data-number="3">3</button>
+        <button class="number-btn" data-number="4">4</button>
+        <button class="number-btn" data-number="5">5</button>
+        <button class="number-btn" data-number="6">6</button>
+        <button class="number-btn" data-number="7">7</button>
+        <button class="number-btn" data-number="8">8</button>
+        <button class="number-btn" data-number="9">9</button>
+        <button class="number-btn" data-number="10">10</button>
+        <button class="number-btn" data-number="11">11</button>
+        <button class="number-btn" data-number="12">12</button>
+        <button class="number-btn" data-number="13">13</button>
+        <button class="number-btn" data-number="14">14</button>
+        <button class="number-btn" data-number="15">15</button>
+        <button class="number-btn" data-number="16">16</button>
+        <button class="number-btn" data-number="17">17</button>
+        <button class="number-btn" data-number="18">18</button>
+        <button class="number-btn" data-number="19">19</button>
+        <button class="number-btn" data-number="20">20</button>
+      </div>
+
+      <!-- Selected Display -->
+      <div class="selected-display" id="selectedDisplay">
+        <span class="selected-label">Selected Number</span>
+        <span class="selected-number" id="selectedNumber">—</span>
+      </div>
+
+      <!-- Action Button -->
+      <button class="btn btn-reveal" id="revealBtn" disabled>Reveal Prize</button>
+    </div>
+  </main>
+
+  <script src="Pick.js"></script>
+</body>
+</html>

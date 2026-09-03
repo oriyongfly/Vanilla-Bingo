@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading Screen</title>
+  <link rel="stylesheet" href="loading.css">
+</head>
+<body>
+  <!-- LOADING SCREEN – UI PIECE -->
+  <div id="loadingScreen" role="status" aria-live="polite">
+    <!-- spinner/logo – new design, no existing spinner in styles -->
+    <div class="spinner-logo" aria-hidden="true"></div>
+    
+    <!-- loading text with placeholder copy -->
+    <div class="loading-text">Loading</div>
+    
+    <!-- subtle extra line (optional) – adds atmosphere -->
+    <div class="loading-sub">please wait</div>
+  </div>
+
+  <!-- DEMO CONTROLS – not part of the loading screen, just for interaction -->
+  <div class="demo-controls">
+    <span>⏳ demo</span>
+    <button id="hideLoaderBtn">✔ hide loading</button>
+    <button id="showLoaderBtn">↺ show loading</button>
+  </div>
+
+  <script src="loading.js"></script>
+</body>
+</html>

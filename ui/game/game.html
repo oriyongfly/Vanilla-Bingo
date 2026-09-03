@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Tips Bingo — Game</title>
+  <link rel="stylesheet" href="game.css">
+</head>
+<body>
+
+  <div class="phone-frame">
+    <div id="gameWrapper">
+      <div id="gameContainer">
+
+        <!-- Top Bar -->
+        <div id="topBar">
+          <span id="timerDisplay">05:00</span>
+          <span class="draw-count" id="drawCount">🎱 0/75</span>
+          <button class="control-btn" id="resetBtn">↺ New</button>
+        </div>
+
+        <!-- Blower -->
+        <div id="blower">
+          <div id="blower-balloon">
+            <div id="currentBall">
+              <span id="ballNumber">—</span>
+              <span class="ball-label" id="ballLetter">B</span>
+            </div>
+          </div>
+          <div id="tube">
+            <div id="elVisibleBallsContainer"></div>
+          </div>
+        </div>
+
+        <!-- Cards -->
+<!-- Single Wide Card - Full Bottom -->
+    <div id="leftGameScreen">
+    <div class="card-wrapper wide-card">
+        <table>
+        <tr>
+            <th class="firstCol">B</th>
+            <th class="secondCol">I</th>
+            <th class="thirdCol">N</th>
+            <th class="fourthCol">G</th>
+            <th class="fifthCol">O</th>
+        </tr>
+        <tr>
+            <td>3</td><td>22</td><td>41</td><td>58</td><td>67</td>
+        </tr>
+        <tr>
+            <td>9</td><td>18</td><td>44</td><td>49</td><td>71</td>
+        </tr>
+        <tr>
+            <td>5</td><td>28</td><td class="free-space">★</td><td>52</td><td>63</td>
+        </tr>
+        <tr>
+            <td>12</td><td>17</td><td>39</td><td>55</td><td>74</td>
+        </tr>
+        <tr>
+            <td>1</td><td>25</td><td>31</td><td>47</td><td>69</td>
+        </tr>
+        </table>
+    </div>
+    </div>
+
+  <!-- Winning Dialog -->
+    <!-- Winning Dialog - Shows Winning Card -->
+   <!-- Winning Dialog -->
+<div id="winningDialogContainer">
+  <div class="modal-inner">
+    <button class="modal-close" id="modalClose">&times;</button>
+    <div id="winningDialog">
+      <header>🎉 BINGO!</header>
+      <div id="content">
+        <div class="bingos-label">Winning Card</div>
+        <!-- The winning card will be injected here -->
+        <div id="center-card"></div>
+        <div id="prize"></div>
+      </div>
+      <footer>
+        <button id="modalOkBtn">OK</button>
+      </footer>
+    </div>
+  </div>
+</div>
+
+  <script src="game.js"></script>
+</body>
+</html>

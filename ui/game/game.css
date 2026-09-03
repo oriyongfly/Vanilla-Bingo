@@ -1,0 +1,622 @@
+/* ── Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(160deg, #1a0850 0%, #2a0c60 45%, #1a0850 100%);
+  font-family: 'Roboto Slab', serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:root {
+  --mainWheatColour: #F5DEB2;
+  --firstColColour: #008ed6;
+  --secondColColour: #83d100;
+  --thirdColColour: #e17000;
+  --fourthColColour: #a71906;
+  --fifthColColour: #642e88;
+}
+
+.phone-frame {
+  width: 390px;
+  max-width: 100vw;
+  margin: 12px auto;
+  border-radius: 36px;
+  border: 10px solid #111;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  background: #0b0d15;
+}
+
+#gameWrapper {
+  color: #ffffdd;
+  padding: 12px;
+  min-height: 100vh;
+}
+
+#gameContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Top Bar ── */
+#topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#timerDisplay {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: #ff6b6b;
+  min-width: 60px;
+  text-align: center;
+}
+
+#timerDisplay.warning {
+  color: #ffd93d;
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+#timerDisplay.danger {
+  color: #ff6b6b;
+  animation: pulse 0.4s ease-in-out infinite;
+}
+
+#timerDisplay.complete {
+  color: #83d100;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.control-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  background: linear-gradient(135deg, #7c8cff, #b47cff);
+  color: #fff;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.control-btn:active {
+  transform: scale(0.95);
+}
+
+.draw-count {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.7rem;
+  min-width: 70px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.draw-count.complete {
+  color: #83d100;
+}
+
+/* ── Blower ── */
+#blower {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+#blower-balloon {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-bottom: none;
+  border-radius: 50% 50% 0 0;
+  background: radial-gradient(ellipse at 40% 35%, rgba(255, 255, 255, 0.15) 0%, rgba(180, 160, 220, 0.1) 40%, rgba(80, 40, 120, 0.5) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.4s ease;
+}
+
+#currentBall {
+  font-size: 5rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 40px rgba(124, 140, 255, 0.5);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: center;
+  line-height: 1;
+}
+
+#currentBall.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#currentBall .ball-label {
+  font-size: 1.2rem;
+  display: block;
+  opacity: 0.6;
+}
+
+#currentBall.complete {
+  font-size: 3.5rem;
+}
+
+/* ── Tube ── */
+#tube {
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(to bottom, rgba(60, 30, 90, 0.9) 0%, rgba(30, 10, 60, 1) 100%);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+}
+
+#elVisibleBallsContainer {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  padding: 3px 0;
+}
+
+#elVisibleBallsContainer::-webkit-scrollbar {
+  height: 2px;
+}
+
+#elVisibleBallsContainer::-webkit-scrollbar-thumb {
+  background: rgba(124, 140, 255, 0.3);
+  border-radius: 2px;
+}
+
+/* ── Ball ── */
+.ball {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.ball::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 65%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ball .inner-circle {
+  width: 55%;
+  height: 55%;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.85);
+  margin: 22% auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.ball .inner-circle span {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #000;
+}
+
+.ball.ball-B {
+  background: radial-gradient(circle at 35% 25%, #76deef, #008ed6 45%, #062745 100%);
+}
+.ball.ball-I {
+  background: radial-gradient(circle at 35% 25%, #c3ec81, #83d100 45%, #3a5c00 100%);
+}
+.ball.ball-N {
+  background: radial-gradient(circle at 35% 25%, #f6c079, #e17000 45%, #7a3800 100%);
+}
+.ball.ball-G {
+  background: radial-gradient(circle at 35% 25%, #e35a45, #a71906 45%, #4a0000 100%);
+}
+.ball.ball-O {
+  background: radial-gradient(circle at 35% 25%, #8f4ad2, #642e88 45%, #2a0045 100%);
+}
+
+/* ── Cards ── */
+#leftGameScreen {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.card-wrapper {
+  text-align: center;
+  padding: 3px;
+  font-weight: 700;
+  font-size: 0.65rem;
+  background-color: #fff;
+  border-radius: 4px;
+}
+
+.card-wrapper table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background-color: var(--mainWheatColour);
+  color: #000;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.card-wrapper th,
+.card-wrapper td {
+  border: 1px solid lightyellow;
+  aspect-ratio: 1;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 0.6rem;
+}
+
+.card-wrapper th {
+  color: #fff;
+  font-size: 0.55rem;
+}
+
+.card-wrapper th.firstCol {
+  background-color: var(--firstColColour);
+}
+.card-wrapper th.secondCol {
+  background-color: var(--secondColColour);
+}
+.card-wrapper th.thirdCol {
+  background-color: var(--thirdColColour);
+}
+.card-wrapper th.fourthCol {
+  background-color: var(--fourthColColour);
+}
+.card-wrapper th.fifthCol {
+  background-color: var(--fifthColColour);
+}
+
+.card-wrapper td.drawn {
+  background: radial-gradient(circle at 50% 120%, #dce1af, #f6c079 10%, #e11b3c 80%, #93abe1 100%);
+  border-radius: 50%;
+  border-color: #e17000;
+}
+
+.card-wrapper td.free-space {
+  background-color: lightyellow;
+  font-size: 0.4em;
+}
+
+/* ── Winning Dialog ── */
+#winningDialogContainer {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#winningDialogContainer.show {
+  display: flex;
+}
+
+.modal-inner {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.modal-close {
+  position: absolute;
+  z-index: 2;
+  right: 8px;
+  top: 8px;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  font-size: 18px;
+  cursor: pointer;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border: none;
+  color: #333;
+}
+
+#winningDialog header {
+  height: 60px;
+  border-bottom: 2px solid #e17010;
+  background: linear-gradient(135deg, #f6c079, #e17010);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+#winningDialog #content {
+  padding: 16px 20px;
+  color: #e17010;
+  font-size: 0.95rem;
+}
+
+#winningDialog #content #bingos span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: rgba(225, 112, 0, 0.06);
+  border-radius: 8px;
+}
+
+.prize-spin-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: conic-gradient(#f6c079, #e17000, #f6c079);
+  flex-shrink: 0;
+  animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+#winningCardContainer td.win-highlight {
+  background: #ffd700 !important;
+  box-shadow: 0 0 20px #ffd700;
+  border-radius: 50%;
+  animation: winPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes winPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 420px) {
+  .phone-frame {
+    border-width: 6px;
+    border-radius: 24px;
+  }
+
+  #currentBall {
+    font-size: 3.5rem;
+  }
+
+  .ball {
+    width: 28px;
+    height: 28px;
+  }
+
+  #tube {
+    height: 40px;
+  }
+
+  .card-wrapper th,
+  .card-wrapper td {
+    font-size: 0.5rem;
+  }
+}
+/* ── Single Wide Card ── */
+/* ── Single Wide Card - Full Bottom ── */
+#leftGameScreen {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 200px;
+}
+
+.card-wrapper.wide-card {
+  flex: 1;
+  width: 100%;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 6px;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.7);
+}
+
+.card-wrapper.wide-card table {
+  width: 100%;
+  height: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background-color: var(--mainWheatColour);
+  color: #000;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.card-wrapper.wide-card th,
+.card-wrapper.wide-card td {
+  border: 2px solid lightyellow;
+  aspect-ratio: 1;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  font-weight: 700;
+  width: 20%;
+}
+
+.card-wrapper.wide-card th {
+  color: #fff;
+  font-size: clamp(0.8rem, 2vw, 1.2rem);
+  height: clamp(30px, 6vw, 50px);
+}
+
+.card-wrapper.wide-card th.firstCol {
+  background-color: var(--firstColColour);
+}
+.card-wrapper.wide-card th.secondCol {
+  background-color: var(--secondColColour);
+}
+.card-wrapper.wide-card th.thirdCol {
+  background-color: var(--thirdColColour);
+}
+.card-wrapper.wide-card th.fourthCol {
+  background-color: var(--fourthColColour);
+}
+.card-wrapper.wide-card th.fifthCol {
+  background-color: var(--fifthColColour);
+}
+
+.card-wrapper.wide-card td.drawn {
+  background: radial-gradient(circle at 50% 120%, #dce1af, #f6c079 10%, #e11b3c 80%, #93abe1 100%);
+  border-radius: 50%;
+  border-color: #e17000;
+}
+
+.card-wrapper.wide-card td.free-space {
+  background-color: lightyellow;
+  font-size: clamp(0.6rem, 1.5vw, 1rem);
+}
+
+/* ── Make the card fill remaining space ── */
+#gameContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 100vh;
+}
+
+#rightGameScreen {
+  flex-shrink: 0;
+}
+
+#leftGameScreen {
+  flex: 1;
+  min-height: 0;
+}
+/* ── Center Card Styles ── */
+#center-card {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px 0;
+  width: 100%;
+}
+
+#center-card .card-wrapper {
+  width: 100%;
+  max-width: 300px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+#center-card .card-wrapper table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  background-color: #F5DEB2;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#center-card .card-wrapper th,
+#center-card .card-wrapper td {
+  border: 2px solid #fff;
+  aspect-ratio: 1;
+  padding: 4px;
+  text-align: center;
+  vertical-align: middle;
+  font-size: clamp(14px, 2.5vw, 20px);
+  font-weight: 700;
+  width: 20%;
+}
+
+#center-card .card-wrapper th {
+  color: #fff;
+  font-size: clamp(12px, 2vw, 16px);
+}
+
+#center-card .card-wrapper th.firstCol {
+  background-color: #008ed6;
+}
+#center-card .card-wrapper th.secondCol {
+  background-color: #83d100;
+}
+#center-card .card-wrapper th.thirdCol {
+  background-color: #e17000;
+}
+#center-card .card-wrapper th.fourthCol {
+  background-color: #a71906;
+}
+#center-card .card-wrapper th.fifthCol {
+  background-color: #642e88;
+}
+
+#center-card .card-wrapper td.win-highlight {
+  background: #ffd700 !important;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+  animation: winPulse 0.8s ease-in-out infinite;
+}
+
+#center-card .card-wrapper td.free-space {
+  background-color: #fff8dc;
+}
+
+@keyframes winPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
