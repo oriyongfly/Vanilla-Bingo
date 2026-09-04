@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 // Create the context
@@ -26,15 +26,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Get initData from Telegram
-  const getTelegramInitData = () => {
+  const getTelegramInitData = useCallback(() => {
     if (!isTelegramWebApp()) {
       return null;
     }
     return window.Telegram.WebApp.initData;
-  };
+  }, []);
 
   // Authenticate user
-  const authenticate = async () => {
+  const authenticate = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getTelegramInitData]);
 
   // Logout function
   const logout = () => {
@@ -127,7 +127,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkStoredUser();
-  }, []);
+  }, [authenticate, getTelegramInitData]);
 
   // Update Telegram WebApp settings when authenticated
   useEffect(() => {
