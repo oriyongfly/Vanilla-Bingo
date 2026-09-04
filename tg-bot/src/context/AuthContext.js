@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [getTelegramInitData]);
+  }, []);
 
   // Logout function
   const logout = () => {
