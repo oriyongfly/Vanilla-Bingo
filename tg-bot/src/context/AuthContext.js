@@ -93,10 +93,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Authentication error:', err);
-      const detail = err.response
-        ? `HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`
-        : err.message || 'Unknown error';
-      setError(`Auth failed — ${detail}`);
+      setError(err.response?.data?.message || 'Failed to authenticate. Please try again.');
       setIsAuthenticated(false);
       setUser(null);
     } finally {

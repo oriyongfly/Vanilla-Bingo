@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from './context/AuthContext';
+import LoadingScreen from './components/ui/LoadingScreen';
 import './App.css';
 
 function App() {
@@ -7,14 +8,7 @@ function App() {
 
   // Loading state
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--tg-theme-bg-color)]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--tg-theme-button-color)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-[var(--tg-theme-text-color)]">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // Error state
