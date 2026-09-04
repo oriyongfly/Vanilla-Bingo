@@ -1,9 +1,31 @@
 import React from 'react';
 import { useAuth } from './context/AuthContext';
+import axios from 'axios';
 import './App.css';
+import { timeStamp } from 'node:console';
 
 function App() {
   const { user, loading, error, isAuthenticated } = useAuth();
+
+  useEffect(()=>{
+    const sendInitData = async () => {
+      if (isAuthenticated && user) {
+          try {
+            const initData = {
+              userId: user.id,
+              firstName: user.first_name,
+              timeStamp: new Date().toISOString()
+            };
+
+            const response = await axios.post('http://localhost:5000/api/auth/verify', initData);
+            console.log('init data sent:', response.data);
+          } catch (err) {
+            console.error('Failed to send init data:', err);
+          }
+      }
+    };
+    sendInitData();
+  }, [isAuthenticated, user]);
 
   // Loading state
   if (loading) {
