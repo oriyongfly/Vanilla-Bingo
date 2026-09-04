@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import axios from 'axios';
 import './App.css';
-import { timeStamp } from 'node:console';
 
 function App() {
   const { user, loading, error, isAuthenticated } = useAuth();
