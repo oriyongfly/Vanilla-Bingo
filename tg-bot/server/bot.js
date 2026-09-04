@@ -1,6 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const dotenv = require('dotenv');
 
+// Load environment variables at module scope (always runs)
 dotenv.config();
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -10,10 +11,6 @@ if (!BOT_TOKEN) {
   console.error('❌ BOT_TOKEN is not set in environment variables');
   process.exit(1);
 }
-
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
-
-console.log('🤖 Bot starting...');
 
 // Check if URL uses HTTPS (required for web_app)
 const isHttps = WEB_APP_URL.startsWith('https://');
@@ -45,147 +42,170 @@ const MAIN_MENU = {
   },
 };
 
-// ─── Commands ────────────────────────────────────────────────────────────────
+// ─── Bot initialization function ────────────────────────────────────────────────
 
-// /start command
-bot.onText(/\/start/, async (msg) => {
-  const chatId = msg.chat.id;
-  const firstName = msg.from?.first_name || 'Player';
+async function initBot() {
+  const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-  await bot.sendMessage(
-    chatId,
-    `👋 Welcome, *${firstName}!*\n\nWhat would you like to do?`,
-    { parse_mode: 'Markdown', ...MAIN_MENU }
-  );
-});
+  console.log('🤖 Bot starting...');
 
-// /menu command
-bot.onText(/\/menu/, async (msg) => {
-  const chatId = msg.chat.id;
+  // ─── Commands ────────────────────────────────────────────────────────────────
 
-  await bot.sendMessage(
-    chatId,
-    `What would you like to do?`,
-    { parse_mode: 'Markdown', ...MAIN_MENU }
-  );
-});
+  // /start command
+  bot.onText(/\/start/, async (msg) => {
+    const chatId = msg.chat.id;
+    const firstName = msg.from?.first_name || 'Player';
 
-// ─── Callback queries (button clicks) ──────────────────────────────────────
+    await bot.sendMessage(
+      chatId,
+      `👋 Welcome, *${firstName}!*\n\nWhat would you like to do?`,
+      { parse_mode: 'Markdown', ...MAIN_MENU }
+    );
+  });
 
-bot.on('callback_query', async (query) => {
-  const chatId = query.message?.chat.id;
-  const messageId = query.message?.message_id;
-  const data = query.data;
+  // /menu command
+  bot.onText(/\/menu/, async (msg) => {
+    const chatId = msg.chat.id;
 
-  if (!chatId || !messageId) return;
+    await bot.sendMessage(
+      chatId,
+      `What would you like to do?`,
+      { parse_mode: 'Markdown', ...MAIN_MENU }
+    );
+  });
 
-  switch (data) {
-    case 'cmd:play':
-      await bot.answerCallbackQuery(query.id, {
-        text: `Open the app to play: ${WEB_APP_URL}`,
-        show_alert: true,
-      });
-      break;
+  // ─── Callback queries (button clicks) ──────────────────────────────────────
 
-    case 'cmd:balance':
-      await bot.editMessageText('💰 *Balance*\n\nYour balance will appear here.', {
-        chat_id: chatId,
-        message_id: messageId,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
-        },
-      });
-      break;
+  bot.on('callback_query', async (query) => {
+    const chatId = query.message?.chat.id;
+    const messageId = query.message?.message_id;
+    const data = query.data;
 
-    case 'cmd:deposit':
-      await bot.editMessageText('📥 *Deposit*\n\nDeposit instructions will appear here.', {
-        chat_id: chatId,
-        message_id: messageId,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
-        },
-      });
-      break;
+    if (!chatId || !messageId) return;
 
-    case 'cmd:withdraw':
-      await bot.editMessageText('📤 *Withdraw*\n\nWithdrawal instructions will appear here.', {
-        chat_id: chatId,
-        message_id: messageId,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
-        },
-      });
-      break;
+    switch (data) {
+      case 'cmd:play':
+        await bot.answerCallbackQuery(query.id, {
+          text: `Open the app to play: ${WEB_APP_URL}`,
+          show_alert: true,
+        });
+        break;
 
-    case 'cmd:transfer':
-      await bot.editMessageText('🔄 *Transfer*\n\nTransfer instructions will appear here.', {
-        chat_id: chatId,
-        message_id: messageId,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
-        },
-      });
-      break;
-
-    case 'cmd:invite':
-      await bot.editMessageText('👥 *Invite*\n\nInvite link will appear here.', {
-        chat_id: chatId,
-        message_id: messageId,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
-        },
-      });
-      break;
-
-    case 'cmd:instructions':
-      await bot.editMessageText('📖 *Instructions*\n\nGame instructions will appear here.', {
-        chat_id: chatId,
-        message_id: messageId,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
-        },
-      });
-      break;
-
-    case 'cmd:support':
-      await bot.editMessageText('🆘 *Support*\n\nSupport information will appear here.', {
-        chat_id: chatId,
-        message_id: messageId,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
-        },
-      });
-      break;
-
-    case 'cmd:menu':
-      await bot.editMessageText(
-        `What would you like to do?`,
-        {
+      case 'cmd:balance':
+        await bot.editMessageText('💰 *Balance*\n\nYour balance will appear here.', {
           chat_id: chatId,
           message_id: messageId,
           parse_mode: 'Markdown',
-          ...MAIN_MENU,
-        }
-      );
-      break;
+          reply_markup: {
+            inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
+          },
+        });
+        break;
 
-    default:
-      await bot.answerCallbackQuery(query.id);
-      break;
-  }
-});
+      case 'cmd:deposit':
+        await bot.editMessageText('📥 *Deposit*\n\nDeposit instructions will appear here.', {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
+          },
+        });
+        break;
 
-// ─── Error handling ─────────────────────────────────────────────────────────
+      case 'cmd:withdraw':
+        await bot.editMessageText('📤 *Withdraw*\n\nWithdrawal instructions will appear here.', {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
+          },
+        });
+        break;
 
-bot.on('polling_error', (err) => {
-  console.error('Polling error:', err.message);
-});
+      case 'cmd:transfer':
+        await bot.editMessageText('🔄 *Transfer*\n\nTransfer instructions will appear here.', {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
+          },
+        });
+        break;
 
-console.log('✅ Bot is running and listening for commands');
+      case 'cmd:invite':
+        await bot.editMessageText('👥 *Invite*\n\nInvite link will appear here.', {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
+          },
+        });
+        break;
+
+      case 'cmd:instructions':
+        await bot.editMessageText('📖 *Instructions*\n\nGame instructions will appear here.', {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
+          },
+        });
+        break;
+
+      case 'cmd:support':
+        await bot.editMessageText('🆘 *Support*\n\nSupport information will appear here.', {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '« Back to Menu', callback_data: 'cmd:menu' }]],
+          },
+        });
+        break;
+
+      case 'cmd:menu':
+        await bot.editMessageText(
+          `What would you like to do?`,
+          {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'Markdown',
+            ...MAIN_MENU,
+          }
+        );
+        break;
+
+      default:
+        await bot.answerCallbackQuery(query.id);
+        break;
+    }
+  });
+
+  // ─── Error handling ─────────────────────────────────────────────────────────
+
+  bot.on('polling_error', (err) => {
+    console.error('Polling error:', err.message);
+  });
+
+  console.log('✅ Bot is running and listening for commands');
+
+  return bot;
+}
+
+// ─── Export the bot initialization function ────────────────────────────────────
+
+module.exports = { initBot };
+
+// ─── Auto-start if run directly ──────────────────────────────────────────────
+
+if (require.main === module) {
+  initBot().catch((err) => {
+    console.error('❌ Failed to start bot:', err);
+    process.exit(1);
+  });
+}

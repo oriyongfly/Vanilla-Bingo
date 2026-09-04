@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Import the bot initialization function
+const { initBot } = require('./bot');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -40,6 +43,14 @@ app.post('/api/auth/verify', (req, res) => {
   });
 });
 
+// Start the server and bot
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
+  
+  // Initialize the bot only after server is successfully bound
+  initBot().catch((err) => {
+    console.error('❌ Bot initialization failed:', err);
+    // Note: If BOT_TOKEN is missing, bot.js will exit the process
+    // This is acceptable behavior for a broken deployment
+  });
 });
