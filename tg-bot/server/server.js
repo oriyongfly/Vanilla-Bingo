@@ -1,44 +1,97 @@
-// ─── Commands ────────────────────────────────────────────────────────────────
-
-// /start command - check if user exists, show appropriate response
-bot.onText(/\/start/, async (msg) => {
-  const chatId = msg.chat.id;
-  const telegramId = msg.from?.id;
-  const firstName = msg.from?.first_name || 'Player';
+// Authentication route
+app.post('/api/auth/verify', async (req, res) => {
+  const { initData } = req.body;
+  
+  if (!initData) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'initData is required' 
+    });
+  }
 
   try {
-    // Check if user is already registered
-    const existingUser = await User.findOne({ telegramId });
-
-    if (existingUser) {
-      // User exists - welcome back and show main menu
-      const displayName = existingUser.firstName || firstName;
-      
-      await bot.sendMessage(
-        chatId,
-        `👋 Welcome back, *${displayName}!*\n\nWhat would you like to do?`,
-        { 
-          parse_mode: 'Markdown',
-          ...MAIN_MENU 
-        }
-      );
-    } else {
-      // New user - request phone number
-      await bot.sendMessage(
-        chatId,
-        `👋 Welcome, *${firstName}!*\n\nTo get started, please share your phone number by tapping the button below.`,
-        { 
-          parse_mode: 'Markdown', 
-          ...PHONE_REQUEST_KEYBOARD 
-        }
-      );
+    // 1. Parse initData as URL query string
+    const urlParams = new URLSearchParams(initData);
+    const params = {};
+    let hash = null;
+    
+    // Extract all parameters and remove hash for verification
+    for (const [key, value] of urlParams.entries()) {
+      if (key === 'hash') {
+        hash = value;
+      } else {
+        params[key] = value;
+      }
     }
+    
+    // 2. Verify hash exists
+    if (!hash) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing hash in initData'
+      });
+    }
+    
+    // 3. Sort remaining keys alphabetically
+    const sortedKeys = Object.keys(params).sort();
+    
+    // 4. Create data check string (key=value lines separated by newline)
+    const dataCheckString = sortedKeys
+      .map(key => `${key}=${params[key]}`)
+      .join('\n');
+    
+    // 5. Derive secret key: HMAC-SHA256 of "WebAppData" using bot token
+    const secretKey = crypto
+      .createHmac('sha256', 'WebAppData')
+      .update(BOT_TOKEN)
+      .digest();
+    
+    // 6. Compute HMAC-SHA256 of data check string using derived secret key
+    const calculatedHash = crypto
+      .createHmac('sha256', secretKey)
+      .update(dataCheckString)
+      .digest('hex');
+    
+    // 7. Compare calculated hash with provided hash
+    if (calculatedHash !== hash) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid initData signature'
+      });
+    }
+    
+    // 8. Parse user data from params
+    let userData;
+    try {
+      userData = JSON.parse(params.user);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user data in initData'
+      });
+    }
+    
+    // 9. Extract user fields
+    const user = {
+      id: userData.id,
+      first_name: userData.first_name || '',
+      last_name: userData.last_name || '',
+      username: userData.username || '',
+      photo_url: userData.photo_url || null
+    };
+    
+    // 10. Return success with user data
+    res.json({
+      success: true,
+      message: 'Authentication successful',
+      user
+    });
+    
   } catch (error) {
-    console.error('Error checking user registration:', error);
-    await bot.sendMessage(
-      chatId,
-      `❌ Sorry, there was an error. Please try again later.`,
-      { parse_mode: 'Markdown' }
-    );
+    console.error('Auth verification error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error during authentication'
+    });
   }
 });
