@@ -56,11 +56,7 @@ async function startServer() {
   try {
     console.log('🔄 Connecting to MongoDB...');
     
-    await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      // Mongoose 6+ defaults to these settings, but we'll be explicit
-    });
+    await mongoose.connect(MONGODB_URI);
     
     console.log('✅ MongoDB connected successfully');
     
