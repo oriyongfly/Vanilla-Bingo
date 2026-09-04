@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Wait a tick for Telegram to populate initDataUnsafe
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       const webApp = window.Telegram.WebApp;
       const initDataUnsafe = webApp.initDataUnsafe || {};
