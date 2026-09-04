@@ -79,9 +79,6 @@ bot.on('callback_query', async (query) => {
 
   if (!chatId || !messageId) return;
 
-  // Acknowledge the callback
-  await bot.answerCallbackQuery(query.id);
-
   switch (data) {
     case 'cmd:play':
       await bot.answerCallbackQuery(query.id, {
@@ -180,6 +177,7 @@ bot.on('callback_query', async (query) => {
       break;
 
     default:
+      await bot.answerCallbackQuery(query.id);
       break;
   }
 });

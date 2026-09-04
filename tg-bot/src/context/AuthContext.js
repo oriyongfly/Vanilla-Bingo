@@ -39,9 +39,9 @@ export const AuthProvider = ({ children }) => {
     setError(null);
 
     try {
-      const initData = getTelegramInitData();
+      const twa = isTelegramWebApp();
 
-      if (!initData) {
+      if (!twa) {
         setError('Not running inside Telegram or initData not available');
         setLoading(false);
         setIsAuthenticated(false);
@@ -49,28 +49,47 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // Send initData to backend for verification
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/auth/verify`,
-        { initData },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Wait a tick for Telegram to populate initDataUnsafe
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      if (response.data.success) {
-        setUser(response.data.user);
-        setIsAuthenticated(true);
-        setError(null);
-        
-        // Store user in localStorage for persistence (optional)
-        localStorage.setItem('telegramUser', JSON.stringify(response.data.user));
-      } else {
-        setError(response.data.message || 'Authentication failed');
+      const webApp = window.Telegram.WebApp;
+      const initDataUnsafe = webApp.initDataUnsafe || {};
+      const telegramUser = initDataUnsafe.user;
+
+      if (!telegramUser) {
+        setError('Could not retrieve user from Telegram');
+        setLoading(false);
         setIsAuthenticated(false);
         setUser(null);
+        return;
+      }
+
+      const apiUrl = process.env.REACT_APP_API_URL;
+
+      if (apiUrl) {
+        // Backend available — verify server-side
+        const response = await axios.post(
+          `${apiUrl}/api/auth/verify`,
+          { initData: webApp.initData },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+
+        if (response.data.success) {
+          setUser(response.data.user);
+          setIsAuthenticated(true);
+          setError(null);
+          localStorage.setItem('telegramUser', JSON.stringify(response.data.user));
+        } else {
+          setError(response.data.message || 'Authentication failed');
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+      } else {
+        // No backend configured — trust Telegram's initDataUnsafe directly
+        setUser(telegramUser);
+        setIsAuthenticated(true);
+        setError(null);
+        localStorage.setItem('telegramUser', JSON.stringify(telegramUser));
       }
     } catch (err) {
       console.error('Authentication error:', err);
