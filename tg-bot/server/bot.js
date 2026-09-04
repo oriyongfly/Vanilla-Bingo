@@ -1,5 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const dotenv = require('dotenv');
+const User = require('./models/User');
 
 // Load environment variables at module scope (always runs)
 dotenv.config();
@@ -20,7 +21,7 @@ const playButton = isHttps
   ? { text: '🎮 Play Bingo', web_app: { url: WEB_APP_URL } }
   : { text: '🎮 Play Bingo', callback_data: 'cmd:play' };
 
-// Main menu buttons
+// Main menu buttons (inline keyboard)
 const MAIN_MENU = {
   reply_markup: {
     inline_keyboard: [
@@ -42,6 +43,17 @@ const MAIN_MENU = {
   },
 };
 
+// Reply keyboard for phone number sharing
+const PHONE_REQUEST_KEYBOARD = {
+  reply_markup: {
+    keyboard: [
+      [{ text: '📱 Share Phone Number', request_contact: true }]
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: true
+  }
+};
+
 // ─── Bot initialization function ────────────────────────────────────────────────
 
 async function initBot() {
@@ -51,21 +63,37 @@ async function initBot() {
 
   // ─── Commands ────────────────────────────────────────────────────────────────
 
-  // /start command
+  // /start command - show phone number request
   bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const firstName = msg.from?.first_name || 'Player';
 
     await bot.sendMessage(
       chatId,
-      `👋 Welcome, *${firstName}!*\n\nWhat would you like to do?`,
-      { parse_mode: 'Markdown', ...MAIN_MENU }
+      `👋 Welcome, *${firstName}!*\n\nTo get started, please share your phone number by tapping the button below.`,
+      { 
+        parse_mode: 'Markdown', 
+        ...PHONE_REQUEST_KEYBOARD 
+      }
     );
   });
 
-  // /menu command
+  // /menu command - only works for registered users
   bot.onText(/\/menu/, async (msg) => {
     const chatId = msg.chat.id;
+    const telegramId = msg.from?.id;
+
+    // Check if user exists
+    const user = await User.findOne({ telegramId });
+    
+    if (!user) {
+      await bot.sendMessage(
+        chatId,
+        `Please register first by sending /start and sharing your phone number.`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
 
     await bot.sendMessage(
       chatId,
@@ -74,14 +102,106 @@ async function initBot() {
     );
   });
 
+  // ─── Contact message handler (phone number sharing) ──────────────────────
+
+  bot.on('contact', async (msg) => {
+    const chatId = msg.chat.id;
+    const contact = msg.contact;
+    const from = msg.from;
+
+    // Validate that the contact belongs to the user
+    if (contact.user_id !== from.id) {
+      await bot.sendMessage(
+        chatId,
+        `❌ Please share your own phone number.`,
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    try {
+      // Extract user data
+      const telegramId = from.id;
+      const firstName = from.first_name || 'Unknown';
+      const lastName = from.last_name || null;
+      const username = from.username || null;
+      const phoneNumber = contact.phone_number;
+
+      // Register or update user in database
+      const user = await User.findOneAndUpdate(
+        { telegramId },
+        {
+          telegramId,
+          firstName,
+          lastName,
+          username,
+          phoneNumber
+        },
+        { 
+          upsert: true, 
+          new: true, 
+          setDefaultsOnInsert: true 
+        }
+      );
+
+      console.log(`✅ User registered/updated: ${telegramId} (${firstName} ${lastName || ''})`);
+
+      // Confirm registration
+      await bot.sendMessage(
+        chatId,
+        `✅ You're registered, *${firstName}!*\n\nYour phone number has been saved successfully.`,
+        { parse_mode: 'Markdown' }
+      );
+
+      // Remove the reply keyboard
+      await bot.sendMessage(
+        chatId,
+        `What would you like to do?`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            remove_keyboard: true
+          }
+        }
+      );
+
+      // Show the main menu
+      await bot.sendMessage(
+        chatId,
+        `Choose an option:`,
+        { parse_mode: 'Markdown', ...MAIN_MENU }
+      );
+
+    } catch (error) {
+      console.error('Error registering user:', error);
+      await bot.sendMessage(
+        chatId,
+        `❌ Sorry, there was an error registering you. Please try again later.`,
+        { parse_mode: 'Markdown' }
+      );
+    }
+  });
+
   // ─── Callback queries (button clicks) ──────────────────────────────────────
 
   bot.on('callback_query', async (query) => {
     const chatId = query.message?.chat.id;
     const messageId = query.message?.message_id;
     const data = query.data;
+    const telegramId = query.from?.id;
 
     if (!chatId || !messageId) return;
+
+    // For all menu commands, check if user is registered
+    const user = await User.findOne({ telegramId });
+    
+    if (!user) {
+      await bot.answerCallbackQuery(query.id, {
+        text: 'Please register first by sending /start and sharing your phone number.',
+        show_alert: true,
+      });
+      return;
+    }
 
     switch (data) {
       case 'cmd:play':
