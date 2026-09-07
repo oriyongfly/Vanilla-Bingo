@@ -9,8 +9,6 @@ const HomePage = ({ user }) => {
   // Format user data from AuthContext
   const firstName = user?.first_name || 'Guest';
   const lastName = user?.last_name || '';
-  const username = user?.username || '';
-  const displayName = firstName + (lastName ? ` ${lastName}` : '');
   
   // Balance and coins - default values for now (will come from DB later)
   const displayBalance = user?.balance || 'ETB 0.00';
