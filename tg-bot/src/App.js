@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from './context/AuthContext';
 import LoadingScreen from './components/ui/LoadingScreen';
+import HomePage from './components/HomePage'; // Import HomePage
 import './App.css';
 
 function App() {
@@ -28,22 +29,9 @@ function App() {
     );
   }
 
-  // Authenticated state - show main app content
+  // Authenticated state - show HomePage with user data
   if (isAuthenticated && user) {
-    return (
-      <div className="min-h-screen bg-[var(--tg-theme-bg-color)] p-4">
-        <div className="max-w-md mx-auto">
-          <div className="bg-[var(--tg-theme-secondary-bg-color)] rounded-lg p-6">
-            <h1 className="text-2xl font-bold text-[var(--tg-theme-text-color)]">
-              Welcome, {user.first_name}!
-            </h1>
-            <p className="text-[var(--tg-theme-hint-color)] mt-2">
-              You are successfully authenticated.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <HomePage user={user} />;
   }
 
   // Unauthenticated state
