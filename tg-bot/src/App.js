@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from './context/AuthContext';
 import LoadingScreen from './components/ui/LoadingScreen';
-import HomePage from './components/HomePage'; // Import HomePage
+import HomePage from './pages/HomePage';
 import './App.css';
 
 function App() {
