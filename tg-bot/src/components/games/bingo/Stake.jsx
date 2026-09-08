@@ -8,12 +8,8 @@ const stakeOptions = [
 ];
 
 export default function Stake() {
-  const [stakedAmount, setStakedAmount] = useState(0);
-  const [totalRewards, setTotalRewards] = useState(0);
   const [balance, setBalance] = useState(12450);
   const [stakedButton, setStakedButton] = useState(null);
-
-  const APY = 12.5;
 
   const handleStake = (amount) => {
     if (amount <= 0) {
@@ -30,10 +26,6 @@ export default function Stake() {
       return;
     }
 
-    const newStakedAmount = stakedAmount + amount;
-
-    setStakedAmount(newStakedAmount);
-    setTotalRewards((newStakedAmount * APY) / 100);
     setBalance(balance - amount);
 
     setStakedButton(amount);
@@ -41,10 +33,6 @@ export default function Stake() {
     setTimeout(() => {
       setStakedButton(null);
     }, 800);
-
-    console.log(
-      `✅ Staked ${amount} ETB. Total staked: ${newStakedAmount} ETB`
-    );
   };
 
   return (
