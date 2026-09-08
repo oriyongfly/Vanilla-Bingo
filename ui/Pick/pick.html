@@ -3,81 +3,439 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pick a Card</title>
-  <link rel="stylesheet" href="Pick.css">
+  <title>Pick a Card · Cartela</title>
+  <style>
+    /* === Reset & Base === */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100vh;
+      background: #0b0d15;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+    }
+
+    /* === Pick Page === */
+    .pick-page {
+      width: 100%;
+      max-width: 520px;
+      padding: 1.5rem;
+    }
+
+    .pick-container {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(12px);
+      border-radius: 24px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    /* === Top Bar: Stake & Timer side by side === */
+    .top-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .wallet-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .wallet-label {
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .wallet-amount {
+      color: #ffffff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 0.1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .stake-item {
+      background: rgba(124, 140, 255, 0.06);
+      border-color: rgba(124, 140, 255, 0.1);
+    }
+
+    .stake-amount {
+      color: #7c8cff;
+      font-weight: 700;
+    }
+
+    .timer-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timer-label {
+      color: rgba(255, 255, 255, 0.3);
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .timer-display {
+      color: #ff6b6b;
+      font-size: 1.2rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-top: 0.1rem;
+    }
+
+    .timer-display.warning {
+      color: #ffd93d;
+      animation: pulse 0.8s ease-in-out infinite;
+    }
+
+    .timer-display.danger {
+      color: #ff6b6b;
+      animation: pulse 0.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    /* === Header === */
+    .pick-header {
+      text-align: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .pick-header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #7c8cff, #b47cff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.15rem;
+    }
+
+    /* === Number Grid === */
+    .number-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .number-btn {
+      aspect-ratio: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 2px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1.1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .number-btn:hover:not(.selected):not(.used) {
+      background: rgba(124, 140, 255, 0.1);
+      border-color: rgba(124, 140, 255, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(124, 140, 255, 0.1);
+    }
+
+    .number-btn:active:not(.selected):not(.used) {
+      transform: scale(0.95);
+    }
+
+    .number-btn.selected {
+      background: linear-gradient(135deg, #7c8cff, #b47cff);
+      border-color: #7c8cff;
+      color: #ffffff;
+      transform: scale(1.05);
+      box-shadow: 0 8px 30px rgba(124, 140, 255, 0.3);
+    }
+
+    .number-btn.used {
+      background: rgba(255, 255, 255, 0.02);
+      border-color: rgba(255, 255, 255, 0.03);
+      color: rgba(255, 255, 255, 0.15);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .number-btn.used::after {
+      content: '✕';
+      position: absolute;
+      font-size: 0.6rem;
+      color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* === Selected Display === */
+    .selected-display {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .selected-label {
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .selected-number {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.2);
+      transition: color 0.3s ease;
+    }
+
+    .selected-number.active {
+      color: #ffffff;
+    }
+
+    /* === Responsive === */
+    @media (max-width: 420px) {
+      .pick-container {
+        padding: 1rem;
+      }
+
+      .top-bar {
+        gap: 0.4rem;
+      }
+
+      .wallet-item {
+        padding: 0.4rem 0.6rem;
+      }
+
+      .wallet-amount {
+        font-size: 0.75rem;
+      }
+
+      .timer-display {
+        font-size: 1rem;
+      }
+
+      .number-grid {
+        gap: 0.4rem;
+      }
+
+      .number-btn {
+        font-size: 0.9rem;
+        border-radius: 10px;
+      }
+
+      .selected-number {
+        font-size: 1.1rem;
+      }
+
+      .pick-header h1 {
+        font-size: 1.3rem;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .wallet-amount {
+        font-size: 0.65rem;
+      }
+
+      .number-grid {
+        gap: 0.3rem;
+      }
+
+      .number-btn {
+        font-size: 0.75rem;
+        border-radius: 8px;
+      }
+    }
+  </style>
 </head>
 <body>
   <main class="pick-page">
     <div class="pick-container">
-      <!-- Top Bar: Wallets & Timer -->
+      <!-- Top Bar: Stake & Timer side by side -->
       <div class="top-bar">
-        <!-- Main Wallet -->
-        <div class="wallet-item">
-          <span class="wallet-label">Main Wallet</span>
-          <span class="wallet-amount" id="mainWallet">50,000.00 ETB</span>
-        </div>
-
-        <!-- Play Wallet -->
-        <div class="wallet-item">
-          <span class="wallet-label">Play Wallet</span>
-          <span class="wallet-amount" id="playWallet">12,450.00 ETB</span>
-        </div>
-
-        <!-- Stake Display -->
         <div class="wallet-item stake-item">
           <span class="wallet-label">Stake</span>
           <span class="wallet-amount stake-amount" id="stakeDisplay">100 ETB</span>
         </div>
 
-        <!-- Countdown Timer -->
         <div class="timer-item">
           <span class="timer-label">Time Left</span>
-          <span class="timer-display" id="timerDisplay">05:00</span>
+          <span class="timer-display" id="timerDisplay">00:50</span>
         </div>
       </div>
 
       <!-- Header -->
       <div class="pick-header">
-        <h1>Pick a Number</h1>
-        <p class="pick-subtitle">Select a number to reveal your prize</p>
+        <h1>Pick Your Cartela</h1>
       </div>
 
-      <!-- Number Grid -->
-      <div class="number-grid" id="numberGrid">
-        <!-- Numbers 1-20 -->
-        <button class="number-btn" data-number="1">1</button>
-        <button class="number-btn" data-number="2">2</button>
-        <button class="number-btn" data-number="3">3</button>
-        <button class="number-btn" data-number="4">4</button>
-        <button class="number-btn" data-number="5">5</button>
-        <button class="number-btn" data-number="6">6</button>
-        <button class="number-btn" data-number="7">7</button>
-        <button class="number-btn" data-number="8">8</button>
-        <button class="number-btn" data-number="9">9</button>
-        <button class="number-btn" data-number="10">10</button>
-        <button class="number-btn" data-number="11">11</button>
-        <button class="number-btn" data-number="12">12</button>
-        <button class="number-btn" data-number="13">13</button>
-        <button class="number-btn" data-number="14">14</button>
-        <button class="number-btn" data-number="15">15</button>
-        <button class="number-btn" data-number="16">16</button>
-        <button class="number-btn" data-number="17">17</button>
-        <button class="number-btn" data-number="18">18</button>
-        <button class="number-btn" data-number="19">19</button>
-        <button class="number-btn" data-number="20">20</button>
-      </div>
+      <!-- Number Grid 1–60 -->
+      <div class="number-grid" id="numberGrid"></div>
 
       <!-- Selected Display -->
-      <div class="selected-display" id="selectedDisplay">
-        <span class="selected-label">Selected Number</span>
+      <div class="selected-display">
+        <span class="selected-label">Selected</span>
         <span class="selected-number" id="selectedNumber">—</span>
       </div>
-
-      <!-- Action Button -->
-      <button class="btn btn-reveal" id="revealBtn" disabled>Reveal Prize</button>
     </div>
   </main>
 
-  <script src="Pick.js"></script>
+  <script>
+    (function() {
+      "use strict";
+
+      // --- DOM refs ---
+      const grid = document.getElementById('numberGrid');
+      const selectedSpan = document.getElementById('selectedNumber');
+      const stakeDisplay = document.getElementById('stakeDisplay');
+      const timerDisplay = document.getElementById('timerDisplay');
+
+      // --- state ---
+      let selectedNum = null;
+      const usedNumbers = new Set();
+      let timeLeft = 50;
+      let timerInterval = null;
+      let isTimerRunning = false;
+      let isGameActive = true;
+
+      // --- mock data ---
+      stakeDisplay.textContent = '100 ETB';
+
+      // --- helpers ---
+      function updateTimerDisplay() {
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        timerDisplay.classList.remove('warning', 'danger');
+        if (timeLeft <= 10) timerDisplay.classList.add('danger');
+        else if (timeLeft <= 20) timerDisplay.classList.add('warning');
+      }
+
+      function stopTimer() {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          isTimerRunning = false;
+        }
+      }
+
+      function startTimer() {
+        if (isTimerRunning || !isGameActive) return;
+        isTimerRunning = true;
+        timerInterval = setInterval(() => {
+          timeLeft--;
+          updateTimerDisplay();
+          if (timeLeft <= 0) {
+            stopTimer();
+            timerDisplay.textContent = '00:00';
+            timerDisplay.classList.add('danger');
+            isGameActive = false;
+            document.querySelectorAll('.number-btn').forEach(b => b.disabled = true);
+            document.querySelectorAll('.number-btn.selected').forEach(b => b.classList.remove('selected'));
+            selectedNum = null;
+            selectedSpan.textContent = '—';
+            selectedSpan.classList.remove('active');
+          }
+        }, 1000);
+      }
+
+      // --- build grid (1–60) ---
+      function buildGrid() {
+        grid.innerHTML = '';
+        for (let i = 1; i <= 60; i++) {
+          const btn = document.createElement('button');
+          btn.className = 'number-btn';
+          btn.dataset.number = i;
+          btn.textContent = i;
+          grid.appendChild(btn);
+        }
+      }
+      buildGrid();
+
+      // --- grid click: select/unselect ---
+      grid.addEventListener('click', function(e) {
+        const btn = e.target.closest('.number-btn');
+        if (!btn) return;
+        if (btn.classList.contains('used') || btn.disabled || !isGameActive) return;
+
+        const number = parseInt(btn.dataset.number, 10);
+
+        // if already selected → unselect
+        if (btn.classList.contains('selected')) {
+          btn.classList.remove('selected');
+          selectedNum = null;
+          selectedSpan.textContent = '—';
+          selectedSpan.classList.remove('active');
+          return;
+        }
+
+        // start timer on first selection
+        if (!isTimerRunning && usedNumbers.size === 0 && isGameActive) {
+          startTimer();
+        }
+
+        // deselect any other selected
+        document.querySelectorAll('.number-btn.selected').forEach(b => b.classList.remove('selected'));
+
+        // select this one
+        btn.classList.add('selected');
+        selectedNum = number;
+        selectedSpan.textContent = number;
+        selectedSpan.classList.add('active');
+
+        btn.style.transform = 'scale(0.95)';
+        setTimeout(() => { btn.style.transform = 'scale(1.05)'; }, 150);
+      });
+
+      // --- initial timer display ---
+      updateTimerDisplay();
+    })();
+  </script>
 </body>
 </html>

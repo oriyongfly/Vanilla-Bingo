@@ -3,7 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import LoadingScreen from './components/ui/LoadingScreen';
 import HomePage from './pages/HomePage';
-import Stake from './components/games/bingo/Stake';
+import Stake from './games/bingo/Stake';
+import Pick from './games/bingo/Pick';
 import './App.css';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/bingo/stake" element={<Stake />} />
+        <Route path="/bingo/pick" element={<Pick />} />
       </Routes>
     );
   }

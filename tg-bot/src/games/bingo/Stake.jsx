@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const stakeOptions = [
   { label: "5 Birr", amount: 100 },
@@ -9,7 +10,7 @@ const stakeOptions = [
 
 export default function Stake() {
   const [balance, setBalance] = useState(12450);
-  const [stakedButton, setStakedButton] = useState(null);
+  const navigate = useNavigate();
 
   const handleStake = (amount) => {
     if (amount <= 0) {
@@ -26,13 +27,8 @@ export default function Stake() {
       return;
     }
 
-    setBalance(balance - amount);
-
-    setStakedButton(amount);
-
-    setTimeout(() => {
-      setStakedButton(null);
-    }, 800);
+    // Navigate instantly to pick page with stake amount
+    navigate('/bingo/pick', { state: { stakeAmount: amount } });
   };
 
   return (
@@ -117,7 +113,7 @@ export default function Stake() {
                   <button
                     type="button"
                     onClick={() => handleStake(option.amount)}
-                    className={`
+                    className="
                       px-6 py-[0.6rem]
                       border-none
                       rounded-[10px]
@@ -142,14 +138,9 @@ export default function Stake() {
                       max-[420px]:py-2
                       max-[420px]:text-[0.8rem]
                       max-[420px]:min-w-[70px]
-                      ${
-                        stakedButton === option.amount
-                          ? "scale-[0.92]"
-                          : ""
-                      }
-                    `}
+                    "
                   >
-                    {stakedButton === option.amount ? "✓ Staked" : "Play"}
+                    Play
                   </button>
                 </div>
               ))}
