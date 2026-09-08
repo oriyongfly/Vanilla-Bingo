@@ -1,7 +1,9 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import LoadingScreen from './components/ui/LoadingScreen';
 import HomePage from './pages/HomePage';
+import Stake from './components/games/bingo/Stake';
 import './App.css';
 
 function App() {
@@ -29,9 +31,14 @@ function App() {
     );
   }
 
-  // Authenticated state - show HomePage with user data
+  // Authenticated state - show routes with user data via context
   if (isAuthenticated && user) {
-    return <HomePage user={user} />;
+    return (
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/bingo/stake" element={<Stake />} />
+      </Routes>
+    );
   }
 
   // Unauthenticated state

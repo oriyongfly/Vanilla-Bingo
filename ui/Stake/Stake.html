@@ -3,67 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stake · ETB</title>
   <link rel="stylesheet" href="Stake.css">
 </head>
+
 <body>
-  <main class="stake-page">
-    <div class="stake-container">
-      <!-- Header -->
-      <div class="stake-header">
-        <h1>Stake ETB</h1>
-        <p class="stake-subtitle">Earn rewards by staking your Ethiopian Birr</p>
-      </div>
 
-      <!-- Balance Display -->
-      <div class="balance-card">
-        <span class="balance-label">Available Balance</span>
-        <span class="balance-amount" id="balanceDisplay">12,450.00 ETB</span>
-      </div>
+  <div class="stake-layout">
 
-      <!-- Stake Amount Section -->
-      <div class="stake-section">
-        <label class="input-label">Select Stake Amount</label>
+    <!-- Main Stake Section -->
+    <main class="stake-page">
+      <div class="stake-container">
 
-        <!-- Stake Option 1 -->
-        <div class="input-wrapper">
-          <span class="stake-label">100 Birr</span>
-          <button class="btn btn-stake" data-amount="100">Play</button>
-        </div>
+        <!-- Stake Amount Section -->
+        <div class="stake-section">
+          <label class="input-label">Select Stake Amount</label>
 
-        <!-- Stake Option 2 -->
-        <div class="input-wrapper">
-          <span class="stake-label">500 Birr</span>
-          <button class="btn btn-stake" data-amount="500">Play</button>
-        </div>
-
-        <!-- Stake Option 3 -->
-        <div class="input-wrapper">
-          <span class="stake-label">1,000 Birr</span>
-          <button class="btn btn-stake" data-amount="1000">Play</button>
-        </div>
-
-        <!-- Stake Option 4 -->
-        <div class="input-wrapper">
-          <span class="stake-label">5,000 Birr</span>
-          <button class="btn btn-stake" data-amount="5000">Play</button>
-        </div>
-
-        <!-- Staking Info -->
-        <div class="stake-info">
-          <div class="info-row">
-            <span>Your Staked</span>
-            <span class="info-value" id="stakedDisplay">0.00 ETB</span>
+          <!-- Stake Option 1 -->
+          <div class="input-wrapper">
+            <span class="stake-label">5 Birr</span>
+            <button class="btn btn-stake" data-amount="100">Play</button>
           </div>
-          <div class="info-row">
-            <span>Rewards</span>
-            <span class="info-value" id="rewardsDisplay">0.00 ETB</span>
+
+          <!-- Stake Option 2 -->
+          <div class="input-wrapper">
+            <span class="stake-label">10 Birr</span>
+            <button class="btn btn-stake" data-amount="500">Play</button>
           </div>
+
+          <!-- Stake Option 3 -->
+          <div class="input-wrapper">
+            <span class="stake-label">20 Birr</span>
+            <button class="btn btn-stake" data-amount="1000">Play</button>
+          </div>
+
+          <!-- Stake Option 4 -->
+          <div class="input-wrapper">
+            <span class="stake-label">50 Birr</span>
+            <button class="btn btn-stake" data-amount="5000">Play</button>
+          </div>
+
         </div>
       </div>
-    </div>
-  </main>
+    </main>
+
+
+    <!-- Platform Statistics -->
+    <section class="stake-stats" aria-label="Platform statistics">
+
+      <div class="stat-item">
+        <div class="stat-number">45,000+</div>
+        <div class="stat-label">Active Players</div>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-number">60,000+</div>
+        <div class="stat-label">Games Played</div>
+      </div>
+
+      <div class="stat-item">
+        <div class="stat-number">500+</div>
+        <div class="stat-label">Winners Daily</div>
+      </div>
+
+    </section>
+
+  </div>
 
   <script src="Stake.js"></script>
+
 </body>
 </html>

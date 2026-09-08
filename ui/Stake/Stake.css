@@ -17,11 +17,22 @@ body {
   color: #ffffff;
 }
 
+/* === Staking Layout === */
+.stake-layout {
+  width: 100%;
+  max-width: 900px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
 /* === Staking Page === */
 .stake-page {
   width: 100%;
   max-width: 480px;
-  padding: 1.5rem;
 }
 
 .stake-container {
@@ -174,7 +185,57 @@ body {
   font-weight: 500;
 }
 
+/* === Platform Stats === */
+.stake-stats {
+  width: 100%;
+  max-width: 480px;
+  min-height: 298px;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(93, 91, 170, 0.18));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 1.55rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.35rem;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #d9c9e8;
+}
+
 /* === Responsive === */
+@media (max-width: 760px) {
+  .stake-layout {
+    max-width: 520px;
+  }
+
+  .stake-page {
+    max-width: 480px;
+  }
+
+  .stake-image {
+    max-width: 480px;
+  }
+}
+
 @media (max-width: 420px) {
   .stake-container {
     padding: 1.5rem 1rem;

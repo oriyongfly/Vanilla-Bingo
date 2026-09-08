@@ -51,220 +51,215 @@
     return arr;
   }
 
-  // ── Draw Ball ──
-// ── Draw Ball ──
-function drawBall() {
-  if (isGameOver || isComplete) return;
-  if (drawnBalls.length >= 75) { finishGame(); return; }
-
-  const ball = allBalls.pop();
-  if (!ball) { finishGame(); return; }
-
-  drawnBalls.push(ball);
-  drawCount.textContent = '🎱 ' + drawnBalls.length + '/75';
-
-  // Show ball in blower
-  ballNumber.textContent = ball.number;
-  ballLetter.textContent = ball.letter;
-  const colorMap = { 'B': '#008ed6', 'I': '#83d100', 'N': '#e17000', 'G': '#a71906', 'O': '#642e88' };
-  ballNumber.style.color = colorMap[ball.letter] || '#fff';
-
-  currentBall.classList.remove('show');
-  setTimeout(function() { currentBall.classList.add('show'); }, 50);
-
-  balloon.style.background = 'radial-gradient(ellipse at 40% 35%, ' + colorMap[ball.letter] + '44, rgba(80,40,120,0.5) 100%)';
-  setTimeout(function() { balloon.style.background = ''; }, 400);
-
-  // ═══════════════════════════════════════════════════════
-  // STEP 1: Mark the card FIRST
-  // ═══════════════════════════════════════════════════════
-  document.querySelectorAll('.card-wrapper.wide-card td').forEach(function(cell) {
-    if (cell.textContent.trim() === String(ball.number)) {
-      cell.classList.add('drawn');
-    }
+// ── Update Tube Display ──
+function updateTubeDisplay() {
+  // Clear container
+  ballsContainer.innerHTML = '';
+  
+  // Show ALL drawn balls
+  const ballsToShow = drawnBalls.slice();
+  
+  ballsToShow.forEach(function(ball) {
+    const ballEl = document.createElement('div');
+    ballEl.className = 'ball ' + ball.color;
+    ballEl.innerHTML = '<div class="inner-circle"><span>' + ball.number + '</span></div>';
+    ballsContainer.appendChild(ballEl);
   });
-
-  // ═══════════════════════════════════════════════════════
-  // STEP 2: IMMEDIATELY check for BINGO after marking
-  // ═══════════════════════════════════════════════════════
-  const winResult = checkBingo();
-  if (winResult) {
-    // We have a winner! Stop everything NOW.
-    // Don't add ball to tube, don't do anything else
-    showWinningCard(winResult);
-    return; // EXIT immediately - NO more operations
+  
+  // If more than 8 balls, switch to vertical flow
+  const tube = document.getElementById('tube');
+  if (drawnBalls.length > 8) {
+    ballsContainer.classList.add('flow-up');
+    tube.classList.add('many-balls');
+  } else {
+    ballsContainer.classList.remove('flow-up');
+    tube.classList.remove('many-balls');
   }
-
-  // ═══════════════════════════════════════════════════════
-  // STEP 3: ONLY add ball to tube if NO BINGO
-  // ═══════════════════════════════════════════════════════
-  const ballEl = document.createElement('div');
-  ballEl.className = 'ball ' + ball.color;
-  ballEl.innerHTML = '<div class="inner-circle"><span>' + ball.number + '</span></div>';
-  ballsContainer.appendChild(ballEl);
-
+  
+  // Scroll to show latest balls
   setTimeout(function() {
-    if (ballEl.parentNode) {
-      ballEl.scrollIntoView({ block: 'nearest', inline: 'end' });
-    }
+    ballsContainer.scrollTop = ballsContainer.scrollHeight;
+    ballsContainer.scrollLeft = ballsContainer.scrollWidth;
   }, 50);
-
-  while (ballsContainer.children.length > 10) {
-    const first = ballsContainer.firstChild;
-    if (first) first.remove();
-  }
 }
 
-// ── Check BINGO - Returns the winning pattern or false ──
-function checkBingo() {
-  const card = document.querySelector('.card-wrapper.wide-card table');
-  if (!card) return false;
-  
-  const rows = card.querySelectorAll('tr');
-  const winningCells = [];
-  
-  // ── Check Rows ──
-  for (let r = 1; r < rows.length; r++) {
-    const cells = rows[r].querySelectorAll('td');
-    let allMarked = true;
-    let lineCells = [];
-    for (let c = 0; c < 5; c++) {
-      if (!cells[c].classList.contains('drawn') && !cells[c].classList.contains('free-space')) {
-        allMarked = false;
-        break;
+  // ── Draw Ball ──
+  function drawBall() {
+    if (isGameOver || isComplete) return;
+    if (drawnBalls.length >= 75) { finishGame(); return; }
+
+    const ball = allBalls.pop();
+    if (!ball) { finishGame(); return; }
+
+    drawnBalls.push(ball);
+    drawCount.textContent = '🎱 ' + drawnBalls.length + '/75';
+
+    // Show ball in blower
+    ballNumber.textContent = ball.number;
+    ballLetter.textContent = ball.letter;
+    const colorMap = { 'B': '#008ed6', 'I': '#83d100', 'N': '#e17000', 'G': '#a71906', 'O': '#642e88' };
+    ballNumber.style.color = colorMap[ball.letter] || '#fff';
+
+    currentBall.classList.remove('show');
+    setTimeout(function() { currentBall.classList.add('show'); }, 50);
+
+    balloon.style.background = 'radial-gradient(ellipse at 40% 35%, ' + colorMap[ball.letter] + '44, rgba(80,40,120,0.5) 100%)';
+    setTimeout(function() { balloon.style.background = ''; }, 400);
+
+    // Mark the card
+    document.querySelectorAll('.card-wrapper.wide-card td').forEach(function(cell) {
+      if (cell.textContent.trim() === String(ball.number)) {
+        cell.classList.add('drawn');
       }
-      lineCells.push(cells[c]);
+    });
+
+    // Check for BINGO
+    const winResult = checkBingo();
+    if (winResult) {
+      showWinningCard(winResult);
+      return;
     }
-    if (allMarked) {
-      return { type: 'row', index: r, cells: lineCells };
-    }
+
+    // Update tube with ALL drawn balls
+    updateTubeDisplay();
   }
-  
-  // ── Check Columns ──
-  for (let c = 0; c < 5; c++) {
-    let allMarked = true;
-    let lineCells = [];
+
+  // ── Check BINGO - Returns the winning pattern or false ──
+  function checkBingo() {
+    const card = document.querySelector('.card-wrapper.wide-card table');
+    if (!card) return false;
+    
+    const rows = card.querySelectorAll('tr');
+    const winningCells = [];
+    
+    // ── Check Rows ──
     for (let r = 1; r < rows.length; r++) {
-      const cell = rows[r].querySelectorAll('td')[c];
+      const cells = rows[r].querySelectorAll('td');
+      let allMarked = true;
+      let lineCells = [];
+      for (let c = 0; c < 5; c++) {
+        if (!cells[c].classList.contains('drawn') && !cells[c].classList.contains('free-space')) {
+          allMarked = false;
+          break;
+        }
+        lineCells.push(cells[c]);
+      }
+      if (allMarked) {
+        return { type: 'row', index: r, cells: lineCells };
+      }
+    }
+    
+    // ── Check Columns ──
+    for (let c = 0; c < 5; c++) {
+      let allMarked = true;
+      let lineCells = [];
+      for (let r = 1; r < rows.length; r++) {
+        const cell = rows[r].querySelectorAll('td')[c];
+        if (!cell.classList.contains('drawn') && !cell.classList.contains('free-space')) {
+          allMarked = false;
+          break;
+        }
+        lineCells.push(cell);
+      }
+      if (allMarked) {
+        return { type: 'column', index: c, cells: lineCells };
+      }
+    }
+    
+    // ── Check Diagonal 1 (top-left to bottom-right) ──
+    let d1AllMarked = true;
+    let d1Cells = [];
+    for (let i = 0; i < 5; i++) {
+      const cell = rows[i + 1].querySelectorAll('td')[i];
       if (!cell.classList.contains('drawn') && !cell.classList.contains('free-space')) {
-        allMarked = false;
+        d1AllMarked = false;
         break;
       }
-      lineCells.push(cell);
+      d1Cells.push(cell);
     }
-    if (allMarked) {
-      return { type: 'column', index: c, cells: lineCells };
+    if (d1AllMarked) {
+      return { type: 'diagonal1', cells: d1Cells };
     }
-  }
-  
-  // ── Check Diagonal 1 (top-left to bottom-right) ──
-  let d1AllMarked = true;
-  let d1Cells = [];
-  for (let i = 0; i < 5; i++) {
-    const cell = rows[i + 1].querySelectorAll('td')[i];
-    if (!cell.classList.contains('drawn') && !cell.classList.contains('free-space')) {
-      d1AllMarked = false;
-      break;
+    
+    // ── Check Diagonal 2 (top-right to bottom-left) ──
+    let d2AllMarked = true;
+    let d2Cells = [];
+    for (let i = 0; i < 5; i++) {
+      const cell = rows[i + 1].querySelectorAll('td')[4 - i];
+      if (!cell.classList.contains('drawn') && !cell.classList.contains('free-space')) {
+        d2AllMarked = false;
+        break;
+      }
+      d2Cells.push(cell);
     }
-    d1Cells.push(cell);
-  }
-  if (d1AllMarked) {
-    return { type: 'diagonal1', cells: d1Cells };
-  }
-  
-  // ── Check Diagonal 2 (top-right to bottom-left) ──
-  let d2AllMarked = true;
-  let d2Cells = [];
-  for (let i = 0; i < 5; i++) {
-    const cell = rows[i + 1].querySelectorAll('td')[4 - i];
-    if (!cell.classList.contains('drawn') && !cell.classList.contains('free-space')) {
-      d2AllMarked = false;
-      break;
+    if (d2AllMarked) {
+      return { type: 'diagonal2', cells: d2Cells };
     }
-    d2Cells.push(cell);
+    
+    return false; // No BINGO
   }
-  if (d2AllMarked) {
-    return { type: 'diagonal2', cells: d2Cells };
-  }
-  
-  return false; // No BINGO
-}
 
-// ── Show Winning Card with the matched pattern ──
-function showWinningCard(winResult) {
-  // ═══════════════════════════════════════════════════════
-  // STOP EVERYTHING IMMEDIATELY
-  // ═══════════════════════════════════════════════════════
-  isGameOver = true;
-  isComplete = true;  // Also mark as complete
-  stopDrawing();
-  stopTimer();
-  
-  // Clear any pending timeouts
-  if (window._ballTimeout) {
-    clearTimeout(window._ballTimeout);
-    window._ballTimeout = null;
-  }
-  
-  // Get the current card
-  const card = document.querySelector('.card-wrapper.wide-card table');
-  
-  // Clone the card
-  const clone = card.cloneNode(true);
-  
-  // Clear all drawn classes from clone
-  clone.querySelectorAll('td').forEach(function(cell) {
-    cell.classList.remove('drawn');
-  });
-  
-  // Get the winning numbers from the matched pattern
-  const winningNumbers = new Set();
-  winResult.cells.forEach(function(cell) {
-    const text = cell.textContent.trim();
-    if (text !== '★') {
-      winningNumbers.add(text);
+  // ── Show Winning Card with the matched pattern ──
+  function showWinningCard(winResult) {
+    isGameOver = true;
+    isComplete = true;
+    stopDrawing();
+    stopTimer();
+    
+    if (window._ballTimeout) {
+      clearTimeout(window._ballTimeout);
+      window._ballTimeout = null;
     }
-  });
-  
-  // Highlight winning cells in clone
-  clone.querySelectorAll('td').forEach(function(cell) {
-    const text = cell.textContent.trim();
-    if (winningNumbers.has(text) || cell.classList.contains('free-space')) {
-      cell.classList.add('win-highlight');
+    
+    const card = document.querySelector('.card-wrapper.wide-card table');
+    const clone = card.cloneNode(true);
+    
+    clone.querySelectorAll('td').forEach(function(cell) {
+      cell.classList.remove('drawn');
+    });
+    
+    const winningNumbers = new Set();
+    winResult.cells.forEach(function(cell) {
+      const text = cell.textContent.trim();
+      if (text !== '★') {
+        winningNumbers.add(text);
+      }
+    });
+    
+    clone.querySelectorAll('td').forEach(function(cell) {
+      const text = cell.textContent.trim();
+      if (winningNumbers.has(text) || cell.classList.contains('free-space')) {
+        cell.classList.add('win-highlight');
+      }
+    });
+    
+    let patternName = '';
+    switch(winResult.type) {
+      case 'row': patternName = 'Row ' + winResult.index + ' BINGO!';
+        break;
+      case 'column': patternName = 'Column ' + (winResult.index + 1) + ' BINGO!';
+        break;
+      case 'diagonal1': patternName = 'Diagonal BINGO!';
+        break;
+      case 'diagonal2': patternName = 'Diagonal BINGO!';
+        break;
     }
-  });
-  
-  // Show pattern type in header
-  let patternName = '';
-  switch(winResult.type) {
-    case 'row': patternName = 'Row ' + winResult.index + ' BINGO!';
-      break;
-    case 'column': patternName = 'Column ' + (winResult.index + 1) + ' BINGO!';
-      break;
-    case 'diagonal1': patternName = 'Diagonal BINGO!';
-      break;
-    case 'diagonal2': patternName = 'Diagonal BINGO!';
-      break;
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'card-wrapper';
+    wrapper.appendChild(clone);
+    
+    const centerCard = document.getElementById('center-card');
+    centerCard.innerHTML = '';
+    centerCard.appendChild(wrapper);
+    
+    const prize = 50;
+    document.getElementById('prize').textContent = '🏆 Prize: ' + prize + ' ETB';
+    document.querySelector('#winningDialog header').textContent = '🎉 ' + patternName;
+    
+    winningDialog.classList.add('show');
   }
-  
-  // Wrap in card-wrapper
-  const wrapper = document.createElement('div');
-  wrapper.className = 'card-wrapper';
-  wrapper.appendChild(clone);
-  
-  // Show in center-card
-  const centerCard = document.getElementById('center-card');
-  centerCard.innerHTML = '';
-  centerCard.appendChild(wrapper);
-  
-  // Update prize (50 ETB)
-  const prize = 50;
-  document.getElementById('prize').textContent = '🏆 Prize: ' + prize + ' ETB';
-  document.querySelector('#winningDialog header').textContent = '🎉 ' + patternName;
-  
-  // Show dialog
-  winningDialog.classList.add('show');
-}
+
   // ── Finish Game ──
   function finishGame() {
     if (isComplete) return;
@@ -318,7 +313,7 @@ function showWinningCard(winResult) {
   function startDrawing() {
     if (isGameOver || isComplete || drawInterval) return;
     if (!isRunning && drawnBalls.length === 0) startTimer();
-    drawInterval = setInterval(drawBall, 700);
+    drawInterval = setInterval(drawBall, 2000);
   }
 
   function stopDrawing() {

@@ -173,6 +173,7 @@ body {
 }
 
 /* ── Tube ── */
+/* ── Tube ── */
 #tube {
   width: 100%;
   height: 50px;
@@ -193,16 +194,38 @@ body {
   width: 100%;
   height: 100%;
   overflow-x: auto;
+  overflow-y: hidden; /* Keep horizontal scroll */
   padding: 3px 0;
+  flex-wrap: nowrap;
+}
+
+/* For vertical flow - when balls exceed container width */
+#elVisibleBallsContainer.flow-up {
+  flex-wrap: wrap;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: auto;
+  max-height: 100px;
+  align-content: flex-start;
+  gap: 2px;
+  padding: 4px;
 }
 
 #elVisibleBallsContainer::-webkit-scrollbar {
   height: 2px;
+  width: 2px;
 }
 
 #elVisibleBallsContainer::-webkit-scrollbar-thumb {
   background: rgba(124, 140, 255, 0.3);
   border-radius: 2px;
+}
+
+/* When many balls, make tube taller */
+#tube.many-balls {
+  height: auto;
+  min-height: 50px;
+  max-height: 120px;
 }
 
 /* ── Ball ── */
@@ -619,4 +642,24 @@ body {
 @keyframes winPulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
+}
+
+/* ── Card Number Badge ── */
+.card-number {
+  text-align: center;
+  padding: 6px 0 4px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px 4px 0 0;
+  letter-spacing: 0.5px;
+  font-family: 'Courier New', monospace;
+}
+
+.card-number .card-id {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  padding: 0 10px;
+  border-radius: 12px;
+  color: #000;
 }

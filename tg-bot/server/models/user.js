@@ -5,54 +5,55 @@ const userSchema = new mongoose.Schema({
     type: Number,
     required: true,
     unique: true,
-    index: true,
-    description: 'Telegram user ID - primary lookup key'
-  },
-  firstName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  lastName: {
-    type: String,
-    required: false,
-    trim: true,
-    default: null
+    index: true
   },
   username: {
     type: String,
-    required: false,
-    trim: true,
-    lowercase: true,
-    default: null,
-    description: 'Telegram username (optional, not all users have one)'
+    trim: true
   },
-  phoneNumber: {
+  fName: {
     type: String,
-    required: true,
-    trim: true,
-    description: 'Phone number obtained via Telegram contact sharing'
+    trim: true
   },
-  registeredAt: {
+  lName: {
+    type: String,
+    trim: true
+  },
+  phone: {
+    type: String,
+    trim: true
+  },
+  referralId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  invitedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  createdAt: {
     type: Date,
-    default: Date.now,
-    immutable: true,
-    description: 'Timestamp when user first registered'
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
-  timestamps: true, // Adds createdAt and updatedAt automatically
-  collection: 'users'
+  timestamps: {
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  }
 });
+
+// Index for better query performance
+userSchema.index({ telegramId: 1 });
+userSchema.index({ referralId: 1 });
 
 // Compound index for faster lookups by username (if needed)
 userSchema.index({ username: 1 });
 
-// Virtual for full name
-userSchema.virtual('fullName').get(function() {
-  return this.lastName 
-    ? `${this.firstName} ${this.lastName}` 
-    : this.firstName;
-});
 
 // Method to get user's display name
 userSchema.methods.getDisplayName = function() {

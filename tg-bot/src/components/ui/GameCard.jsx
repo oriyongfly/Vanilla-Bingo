@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 function BingoIcon() {
   return (
@@ -318,10 +319,15 @@ function GameIcon({ name }) {
   }
 }
 
-export default function GameCard({ name, game }) {
+export default function GameCard({ name, game, path }) {
+  const navigate = useNavigate();
+
   const openGame = () => {
-    console.log("Opening:", game);
-    alert("Opening " + game);
+    if (path) {
+      navigate(path);
+    } else {
+      console.log("Opening:", game);
+    }
   };
 
   return (
@@ -340,4 +346,3 @@ export default function GameCard({ name, game }) {
     </button>
   );
 }
-
