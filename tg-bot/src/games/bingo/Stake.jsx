@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const stakeOptions = [
@@ -9,7 +8,7 @@ const stakeOptions = [
 ];
 
 export default function Stake() {
-  const [balance, setBalance] = useState(12450);
+  const balance = 12450;
   const navigate = useNavigate();
 
   const handleStake = (amount) => {
