@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
 import { getCard } from "./Cards";
@@ -21,6 +21,13 @@ export default function Pick() {
   const [isTimerRunning, setIsTimerRunning] = useState(true);
   const [playerCount, setPlayerCount] = useState(0);
   const [estimatedWin, setEstimatedWin] = useState(0);
+  const [takenCards, setTakenCards] = useState([]);
+
+  const selectedNumRef = useRef(null);
+
+  useEffect(() => {
+    selectedNumRef.current = selectedNum;
+  }, [selectedNum]);
 
   const numbers = Array.from({ length: 60 }, (_, i) => i + 1);
 
@@ -60,16 +67,33 @@ export default function Pick() {
           clearInterval(interval);
           setIsTimerRunning(false);
           setIsGameActive(false);
-          setSelectedNum(null);
+
+          const socket = getSocket();
+          const currentNum = selectedNumRef.current;
+
+          if (currentNum && socket) {
+            socket.emit('bingo:join', {
+              stakeAmount,
+              cardNumber: currentNum,
+              card: getCard(currentNum),
+            });
+            navigate('/bingo/game', {
+              state: { stakeAmount, cardNumber: currentNum },
+            });
+          } else {
+            navigate('/bingo/game', {
+              state: { stakeAmount, spectator: true, drawnBalls: [] },
+            });
+          }
+
           return 0;
         }
-
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isTimerRunning, isGameActive]);
+  }, [isTimerRunning, isGameActive, stakeAmount, getSocket, navigate]);
 
   // Subscribe to tier channel on mount to receive ticks
   useEffect(() => {
@@ -86,11 +110,17 @@ export default function Pick() {
     const handlePlayerJoined = (data) => {
       setPlayerCount(data.playerCount);
       setEstimatedWin(data.estimatedWin);
+      if (Array.isArray(data.takenCards)) {
+        setTakenCards(data.takenCards);
+      }
     };
 
     const handleRoomInfo = (data) => {
       setPlayerCount(data.playerCount);
       setEstimatedWin(data.estimatedWin);
+      if (Array.isArray(data.takenCards)) {
+        setTakenCards(data.takenCards);
+      }
     };
 
     const handleError = (error) => {
@@ -111,6 +141,7 @@ export default function Pick() {
 
   const handleNumberClick = (number) => {
     if (!isGameActive) return;
+    if (takenCards.includes(number)) return;
 
     // If already selected, unselect it
     if (selectedNum === number) {
@@ -120,31 +151,6 @@ export default function Pick() {
 
     // Select number
     setSelectedNum(number);
-  };
-
-  const handleConfirm = () => {
-    if (!selectedNum) return;
-
-    const socket = getSocket();
-    if (!socket) {
-      console.error('Socket not connected');
-      return;
-    }
-
-    const card = getCard(selectedNum);
-
-    socket.emit('bingo:join', {
-      stakeAmount,
-      cardNumber: selectedNum,
-      card,
-    });
-
-    navigate('/bingo/game', {
-      state: {
-        stakeAmount,
-        cardNumber: selectedNum,
-      }
-    });
   };
 
   const minutes = Math.floor(timeLeft / 60);
@@ -341,12 +347,14 @@ export default function Pick() {
           >
             {numbers.map((number) => {
               const isSelected = selectedNum === number;
+              const isTaken = takenCards.includes(number);
+              const isDisabled = !isGameActive || isTaken;
 
               return (
                 <button
                   key={number}
                   type="button"
-                  disabled={!isGameActive}
+                  disabled={isDisabled}
                   onClick={() => handleNumberClick(number)}
                   className={`
                     aspect-square
@@ -364,7 +372,15 @@ export default function Pick() {
                     ease-in-out
 
                     ${
-                      !isGameActive
+                      isTaken
+                        ? `
+                          bg-[rgba(255,255,255,0.02)]
+                          border-[rgba(255,255,255,0.03)]
+                          text-[rgba(255,255,255,0.15)]
+                          cursor-not-allowed
+                          line-through
+                        `
+                        : !isGameActive
                         ? `
                           bg-[rgba(255,255,255,0.02)]
                           border-[rgba(255,255,255,0.03)]
@@ -403,7 +419,19 @@ export default function Pick() {
                 >
                   {number}
 
-                  {!isGameActive && (
+                  {isTaken && (
+                    <span
+                      className="
+                        absolute
+                        text-[0.6rem]
+                        text-[rgba(255,255,255,0.2)]
+                      "
+                    >
+                      🔒
+                    </span>
+                  )}
+
+                  {!isGameActive && !isTaken && (
                     <span
                       className="
                         absolute
@@ -419,7 +447,7 @@ export default function Pick() {
             })}
           </div>
 
-          {/* Selected Display & Confirm */}
+          {/* Selected Display */}
           <div
             className="
               bg-[rgba(255,255,255,0.02)]
@@ -460,29 +488,6 @@ export default function Pick() {
               >
                 {selectedNum ?? "—"}
               </span>
-              
-              {selectedNum && isGameActive && (
-                <button
-                  onClick={handleConfirm}
-                  className="
-                    bg-gradient-to-br
-                    from-[#7c8cff]
-                    to-[#b47cff]
-                    text-white
-                    font-bold
-                    py-2
-                    px-6
-                    rounded-[10px]
-                    text-[0.9rem]
-                    transition-all
-                    hover:scale-[1.02]
-                    hover:shadow-[0_8px_30px_rgba(124,140,255,0.3)]
-                    active:scale-[0.98]
-                  "
-                >
-                  Play
-                </button>
-              )}
             </div>
           </div>
         </div>

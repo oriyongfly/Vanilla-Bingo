@@ -313,6 +313,7 @@ function setupBingoSocket(io) {
         playerCount: tier.players.length,
         estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
         drawnBalls: tier.drawnBalls,
+        takenCards: tier.players.map((p) => p.cardNumber),
       });
     });
 
@@ -332,6 +333,7 @@ function setupBingoSocket(io) {
         playerCount: tier.players.length,
         estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
         drawnBalls: tier.drawnBalls,
+        takenCards: tier.players.map((p) => p.cardNumber),
       });
     });
 
@@ -368,6 +370,7 @@ function setupBingoSocket(io) {
           playerCount: tier.players.length,
           estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
           cardNumber,
+          takenCards: tier.players.map((p) => p.cardNumber),
         });
         return;
       }
@@ -407,9 +410,14 @@ function setupBingoSocket(io) {
         playerCount,
         estimatedWin,
         cardNumber,
+        takenCards: tier.players.map((p) => p.cardNumber),
       });
 
-      io.to(tier.tierChannel).emit('bingo:player_joined', { playerCount, estimatedWin });
+      io.to(tier.tierChannel).emit('bingo:player_joined', {
+        playerCount,
+        estimatedWin,
+        takenCards: tier.players.map((p) => p.cardNumber),
+      });
 
       console.log(`👤 [${stakeAmount} ETB] Player ${userId} joined (card #${cardNumber}, ${playerCount} players)`);
     });
