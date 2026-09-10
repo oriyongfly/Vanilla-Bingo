@@ -1,6 +1,9 @@
 import React from "react";
+import { useAuth } from "../../context/AuthContext";
 
-export default function Header({ user, profileOpen, onProfileToggle }) {
+export default function Header({ profileOpen, onProfileToggle }) {
+  const { user } = useAuth();
+
   const firstName = user?.firstName || "Guest";
   const phone = user?.phone || "No phone number";
   const balance = user?.balance != null ? `ETB ${user.balance.toFixed(2)}` : "ETB 0.00";

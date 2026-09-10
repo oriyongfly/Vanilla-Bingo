@@ -77,7 +77,7 @@ bot.onText(/\/start/, async (msg) => {
 
     if (existingUser) {
       // User exists - welcome back and show main menu
-      const displayName = existingUser.firstName || firstName;
+      const displayName = existingUser.fName || firstName;
       
       await bot.sendMessage(
         chatId,
@@ -162,10 +162,10 @@ bot.onText(/\/start/, async (msg) => {
         { telegramId },
         {
           telegramId,
-          firstName,
-          lastName,
+          fName: firstName,
+          lName: lastName,
           username,
-          phoneNumber
+          phone: phoneNumber
         },
         { 
           upsert: true, 
