@@ -1,16 +1,27 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const http = require('http');
+const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 // Import the bot initialization function
 const { initBot } = require('./bot');
 
+// Import socket handler
+const { setupBingoSocket } = require('./socket/bingo');
+
+// Import User model
+const User = require('./models/user');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 const BOT_TOKEN = process.env.BOT_TOKEN;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Validate required environment variables
 if (!MONGODB_URI) {
@@ -23,6 +34,11 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
+if (!JWT_SECRET) {
+  console.error('❌ JWT_SECRET is not set in environment variables');
+  process.exit(1);
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -32,8 +48,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-// Authentication route
-app.post('/api/auth/verify', async (req, res) => {
+// Authentication route - changed from /api/auth/verify to /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
   const { initData } = req.body;
   
   if (!initData) {
@@ -95,9 +111,9 @@ app.post('/api/auth/verify', async (req, res) => {
     }
     
     // 8. Parse user data from params
-    let userData;
+    let telegramUserData;
     try {
-      userData = JSON.parse(params.user);
+      telegramUserData = JSON.parse(params.user);
     } catch (error) {
       return res.status(400).json({
         success: false,
@@ -105,20 +121,59 @@ app.post('/api/auth/verify', async (req, res) => {
       });
     }
     
-    // 9. Extract user fields
-    const user = {
-      id: userData.id,
-      first_name: userData.first_name || '',
-      last_name: userData.last_name || '',
-      username: userData.username || '',
-      photo_url: userData.photo_url || null
+    // 9. Extract Telegram user fields
+    const telegramUser = {
+      id: telegramUserData.id,
+      first_name: telegramUserData.first_name || '',
+      last_name: telegramUserData.last_name || '',
+      username: telegramUserData.username || '',
+      photo_url: telegramUserData.photo_url || null
     };
     
-    // 10. Return success with user data
+    // 10. Look up user in MongoDB by telegramId
+    let user = await User.findOne({ telegramId: telegramUser.id });
+    
+    if (!user) {
+      // Create new user if doesn't exist
+      user = new User({
+        telegramId: telegramUser.id,
+        firstName: telegramUser.first_name,
+        lastName: telegramUser.last_name,
+        username: telegramUser.username,
+        phoneNumber: telegramUser.phone_number || 'pending',
+      });
+      await user.save();
+    }
+
+    // Load wallet balance
+    const Wallet = require('./models/Wallet');
+    const wallet = await Wallet.getOrCreate(user._id);
+    
+    // 11. Sign JWT with { userId, telegramId }
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        telegramId: user.telegramId 
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    
+    // 12. Return { access_token, user } - user includes wallet balance
     res.json({
       success: true,
       message: 'Authentication successful',
-      user
+      access_token: token,
+      user: {
+        id: user._id,
+        telegramId: user.telegramId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        balance: wallet.balance,
+        withdrawableBalance: wallet.withdrawableBalance,
+        lockedBalance: wallet.lockedBalance,
+      }
     });
     
   } catch (error) {
@@ -129,6 +184,69 @@ app.post('/api/auth/verify', async (req, res) => {
     });
   }
 });
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
+
+// Socket.IO authentication middleware
+io.use(async (socket, next) => {
+  try {
+    // Get token from handshake auth
+    const token = socket.handshake.auth.token;
+    
+    if (!token) {
+      console.warn('⚠️ Socket connection attempt without token');
+      return next(new Error('Authentication required'));
+    }
+    
+    // Verify JWT token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Find user in database
+    const user = await User.findById(decoded.userId);
+    
+    if (!user) {
+      console.warn(`⚠️ Socket connection attempt with invalid userId: ${decoded.userId}`);
+      return next(new Error('User not found'));
+    }
+    
+    // Attach user to socket
+    socket.user = {
+      id: user._id,
+      telegramId: user.telegramId,
+      username: user.username,
+      walletBalance: user.walletBalance
+    };
+    
+    console.log(`✅ Socket authenticated for user: ${user.telegramId} (${user.username || 'no username'})`);
+    next();
+    
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      console.warn('⚠️ Socket connection attempt with invalid JWT');
+      return next(new Error('Invalid token'));
+    } else if (error.name === 'TokenExpiredError') {
+      console.warn('⚠️ Socket connection attempt with expired JWT');
+      return next(new Error('Token expired'));
+    }
+    console.error('❌ Socket auth middleware error:', error);
+    next(new Error('Authentication error'));
+  }
+});
+
+// Setup Bingo socket handlers (with authenticated socket.user available)
+setupBingoSocket(io);
+
 // Connect to MongoDB and start the server
 async function startServer() {
   try {
@@ -138,15 +256,15 @@ async function startServer() {
     
     console.log('✅ MongoDB connected successfully');
     
-    // Start the Express server
-    app.listen(PORT, () => {
+    // Start the Express server with Socket.IO
+    server.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
+      console.log(`✅ Socket.IO attached and listening`);
+      console.log(`✅ Socket.IO auth middleware enabled`);
       
       // Initialize the bot only after server is successfully bound
       initBot().catch((err) => {
         console.error('❌ Bot initialization failed:', err);
-        // Note: If BOT_TOKEN is missing, bot.js will exit the process
-        // This is acceptable behavior for a broken deployment
       });
     });
     
@@ -170,6 +288,9 @@ mongoose.connection.on('disconnected', () => {
 process.on('SIGINT', async () => {
   try {
     await mongoose.connection.close();
+    io.close(() => {
+      console.log('✅ Socket.IO closed');
+    });
     console.log('✅ MongoDB connection closed through app termination');
     process.exit(0);
   } catch (err) {

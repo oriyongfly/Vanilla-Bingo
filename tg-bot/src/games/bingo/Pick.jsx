@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useSocket } from "../../context/SocketContext";
+import { getCard } from "./Cards";
 
 export default function Pick() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { getSocket } = useSocket();
   const stakeAmount = location.state?.stakeAmount || 0;
   
   const [selectedNum, setSelectedNum] = useState(null);
   const [timeLeft, setTimeLeft] = useState(50);
   const [isGameActive, setIsGameActive] = useState(true);
   const [isTimerRunning, setIsTimerRunning] = useState(true);
+  const [playerCount, setPlayerCount] = useState(0);
+  const [estimatedWin, setEstimatedWin] = useState(0);
 
   const numbers = Array.from({ length: 60 }, (_, i) => i + 1);
 
@@ -41,6 +46,37 @@ export default function Pick() {
     return () => clearInterval(interval);
   }, [isTimerRunning, isGameActive]);
 
+  // Socket event listeners
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handlePlayerJoined = (data) => {
+      setPlayerCount(data.playerCount);
+      setEstimatedWin(data.estimatedWin);
+    };
+
+    const handleRoomInfo = (data) => {
+      setPlayerCount(data.playerCount);
+      setEstimatedWin(data.estimatedWin);
+    };
+
+    const handleError = (error) => {
+      console.error('Socket error:', error.message);
+      // Optionally show error to user
+    };
+
+    socket.on('bingo:player_joined', handlePlayerJoined);
+    socket.on('bingo:room_info', handleRoomInfo);
+    socket.on('bingo:error', handleError);
+
+    return () => {
+      socket.off('bingo:player_joined', handlePlayerJoined);
+      socket.off('bingo:room_info', handleRoomInfo);
+      socket.off('bingo:error', handleError);
+    };
+  }, []);
+
   const handleNumberClick = (number) => {
     if (!isGameActive) return;
 
@@ -52,6 +88,31 @@ export default function Pick() {
 
     // Select number
     setSelectedNum(number);
+  };
+
+  const handleConfirm = () => {
+    if (!selectedNum) return;
+    
+    const socket = getSocket();
+    if (!socket) {
+      console.error('Socket not connected');
+      return;
+    }
+
+    const card = getCard(selectedNum);
+
+    socket.emit('bingo:join', {
+      stakeAmount,
+      cardNumber: selectedNum,
+      card,
+    });
+
+    navigate('/bingo/game', {
+      state: {
+        stakeAmount,
+        cardNumber: selectedNum,
+      }
+    });
   };
 
   const minutes = Math.floor(timeLeft / 60);
@@ -228,6 +289,11 @@ export default function Pick() {
             >
               Pick Your Cartela
             </h1>
+            {playerCount > 0 && (
+              <p className="text-[0.8rem] text-[rgba(255,255,255,0.4)]">
+                👥 {playerCount} players • 🏆 {estimatedWin} ETB prize
+              </p>
+            )}
           </div>
 
           {/* Number Grid */}
@@ -321,7 +387,7 @@ export default function Pick() {
             })}
           </div>
 
-          {/* Selected Display */}
+          {/* Selected Display & Confirm */}
           <div
             className="
               bg-[rgba(255,255,255,0.02)]
@@ -345,22 +411,47 @@ export default function Pick() {
               Selected
             </span>
 
-            <span
-              className={`
-                text-[1.3rem]
-                font-bold
-                transition-colors
-                duration-300
-                ${
-                  selectedNum !== null
-                    ? "text-white"
-                    : "text-[rgba(255,255,255,0.2)]"
-                }
-                max-[420px]:text-[1.1rem]
-              `}
-            >
-              {selectedNum ?? "—"}
-            </span>
+            <div className="flex items-center gap-4">
+              <span
+                className={`
+                  text-[1.3rem]
+                  font-bold
+                  transition-colors
+                  duration-300
+                  ${
+                    selectedNum !== null
+                      ? "text-white"
+                      : "text-[rgba(255,255,255,0.2)]"
+                  }
+                  max-[420px]:text-[1.1rem]
+                `}
+              >
+                {selectedNum ?? "—"}
+              </span>
+              
+              {selectedNum && isGameActive && (
+                <button
+                  onClick={handleConfirm}
+                  className="
+                    bg-gradient-to-br
+                    from-[#7c8cff]
+                    to-[#b47cff]
+                    text-white
+                    font-bold
+                    py-2
+                    px-6
+                    rounded-[10px]
+                    text-[0.9rem]
+                    transition-all
+                    hover:scale-[1.02]
+                    hover:shadow-[0_8px_30px_rgba(124,140,255,0.3)]
+                    active:scale-[0.98]
+                  "
+                >
+                  Play
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

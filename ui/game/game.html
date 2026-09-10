@@ -4,7 +4,686 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Tips Bingo — Game</title>
-  <link rel="stylesheet" href="game.css">
+  <style>
+    /* ── Fonts ── */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(160deg, #1a0850 0%, #2a0c60 45%, #1a0850 100%);
+      font-family: 'Roboto Slab', serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    :root {
+      --mainWheatColour: #F5DEB2;
+      --firstColColour: #008ed6;
+      --secondColColour: #83d100;
+      --thirdColColour: #e17000;
+      --fourthColColour: #a71906;
+      --fifthColColour: #642e88;
+    }
+
+    .phone-frame {
+      width: 400px;
+      max-width: 100vw;
+      margin: 12px auto;
+      border-radius: 36px;
+      border: 10px solid #111;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      background: #0b0d15;
+    }
+
+    #gameWrapper {
+      color: #ffffdd;
+      padding: 12px;
+      min-height: 100vh;
+    }
+
+    #gameContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── Top Bar ── */
+    #topBar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .top-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stake-display {
+      color: #7c8cff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      min-width: 70px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .estimated-win {
+      color: #ffd700;
+      font-size: 0.85rem;
+      font-weight: 700;
+      min-width: 70px;
+      text-align: center;
+      flex-shrink: 0;
+      background: rgba(255, 215, 0, 0.1);
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    .draw-count {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.8rem;
+      font-weight: 600;
+      min-width: 80px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .draw-count.complete {
+      color: #83d100;
+    }
+
+    /* ── Blower ── */
+    #blower {
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    #blower-balloon {
+      width: 100%;
+      aspect-ratio: 1;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-bottom: none;
+      border-radius: 50% 50% 0 0;
+      background: radial-gradient(ellipse at 40% 35%, rgba(255, 255, 255, 0.15) 0%, rgba(180, 160, 220, 0.1) 40%, rgba(80, 40, 120, 0.5) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.4s ease;
+    }
+
+    #currentBall {
+      font-size: 5rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 0 40px rgba(124, 140, 255, 0.5);
+      opacity: 0;
+      transform: scale(0.5);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      text-align: center;
+      line-height: 1;
+    }
+
+    #currentBall.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    #currentBall .ball-label {
+      font-size: 1.2rem;
+      display: block;
+      opacity: 0.6;
+    }
+
+    #currentBall.complete {
+      font-size: 3.5rem;
+    }
+
+    /* ── Tube ── */
+    #tube {
+      width: 100%;
+      height: 50px;
+      background: linear-gradient(to bottom, rgba(60, 30, 90, 0.9) 0%, rgba(30, 10, 60, 1) 100%);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+    }
+
+    #elVisibleBallsContainer {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      width: 100%;
+      height: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 3px 0;
+      flex-wrap: nowrap;
+    }
+
+    #elVisibleBallsContainer.flow-up {
+      flex-wrap: wrap;
+      overflow-y: auto;
+      overflow-x: hidden;
+      height: auto;
+      max-height: 100px;
+      align-content: flex-start;
+      gap: 2px;
+      padding: 4px;
+    }
+
+    #elVisibleBallsContainer::-webkit-scrollbar {
+      height: 2px;
+      width: 2px;
+    }
+
+    #elVisibleBallsContainer::-webkit-scrollbar-thumb {
+      background: rgba(124, 140, 255, 0.3);
+      border-radius: 2px;
+    }
+
+    #tube.many-balls {
+      height: auto;
+      min-height: 50px;
+      max-height: 120px;
+    }
+
+    /* ── Ball ── */
+    .ball {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.3);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .ball::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 65%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .ball .inner-circle {
+      width: 55%;
+      height: 55%;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.85);
+      margin: 22% auto 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .ball .inner-circle span {
+      font-size: 0.55rem;
+      font-weight: 700;
+      color: #000;
+    }
+
+    .ball.ball-B {
+      background: radial-gradient(circle at 35% 25%, #76deef, #008ed6 45%, #062745 100%);
+    }
+    .ball.ball-I {
+      background: radial-gradient(circle at 35% 25%, #c3ec81, #83d100 45%, #3a5c00 100%);
+    }
+    .ball.ball-N {
+      background: radial-gradient(circle at 35% 25%, #f6c079, #e17000 45%, #7a3800 100%);
+    }
+    .ball.ball-G {
+      background: radial-gradient(circle at 35% 25%, #e35a45, #a71906 45%, #4a0000 100%);
+    }
+    .ball.ball-O {
+      background: radial-gradient(circle at 35% 25%, #8f4ad2, #642e88 45%, #2a0045 100%);
+    }
+
+    /* ── Cards ── */
+    #leftGameScreen {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .card-wrapper {
+      text-align: center;
+      padding: 3px;
+      font-weight: 700;
+      font-size: 0.65rem;
+      background-color: #fff;
+      border-radius: 4px;
+    }
+
+    .card-wrapper table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      background-color: var(--mainWheatColour);
+      color: #000;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .card-wrapper th,
+    .card-wrapper td {
+      border: 1px solid lightyellow;
+      aspect-ratio: 1;
+      padding: 0;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 0.6rem;
+    }
+
+    .card-wrapper th {
+      color: #fff;
+      font-size: 0.55rem;
+    }
+
+    .card-wrapper th.firstCol {
+      background-color: var(--firstColColour);
+    }
+    .card-wrapper th.secondCol {
+      background-color: var(--secondColColour);
+    }
+    .card-wrapper th.thirdCol {
+      background-color: var(--thirdColColour);
+    }
+    .card-wrapper th.fourthCol {
+      background-color: var(--fourthColColour);
+    }
+    .card-wrapper th.fifthCol {
+      background-color: var(--fifthColColour);
+    }
+
+    .card-wrapper td.drawn {
+      background: radial-gradient(circle at 50% 120%, #dce1af, #f6c079 10%, #e11b3c 80%, #93abe1 100%);
+      border-radius: 50%;
+      border-color: #e17000;
+    }
+
+    .card-wrapper td.free-space {
+      background-color: lightyellow;
+      font-size: 0.4em;
+    }
+
+    /* ── Winning Dialog ── */
+    #winningDialogContainer {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #winningDialogContainer.show {
+      display: flex;
+    }
+
+    .modal-inner {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-close {
+      position: absolute;
+      z-index: 2;
+      right: 8px;
+      top: 8px;
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      font-size: 18px;
+      cursor: pointer;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border: none;
+      color: #333;
+    }
+
+    #winningDialog header {
+      height: 60px;
+      border-bottom: 2px solid #e17010;
+      background: linear-gradient(135deg, #f6c079, #e17010);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    #winningDialog #content {
+      padding: 16px 20px;
+      color: #e17010;
+      font-size: 0.95rem;
+    }
+
+    #winningDialog #content #bingos span {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 8px 0;
+      padding: 8px 12px;
+      background: rgba(225, 112, 0, 0.06);
+      border-radius: 8px;
+    }
+
+    .prize-spin-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: conic-gradient(#f6c079, #e17000, #f6c079);
+      flex-shrink: 0;
+      animation: spin 3s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    #winningCardContainer td.win-highlight {
+      background: #ffd700 !important;
+      box-shadow: 0 0 20px #ffd700;
+      border-radius: 50%;
+      animation: winPulse 0.8s ease-in-out infinite;
+    }
+
+    @keyframes winPulse {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 420px) {
+      .phone-frame {
+        border-width: 6px;
+        border-radius: 24px;
+      }
+
+      #currentBall {
+        font-size: 3.5rem;
+      }
+
+      .ball {
+        width: 28px;
+        height: 28px;
+      }
+
+      #tube {
+        height: 40px;
+      }
+
+      .card-wrapper th,
+      .card-wrapper td {
+        font-size: 0.5rem;
+      }
+    }
+    /* ── Single Wide Card ── */
+    /* ── Single Wide Card - Full Bottom ── */
+    #leftGameScreen {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      min-height: 200px;
+    }
+
+    .card-wrapper.wide-card {
+      flex: 1;
+      width: 100%;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      background-color: #fff;
+      border-radius: 6px;
+      box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.7);
+    }
+
+    .card-wrapper.wide-card table {
+      width: 100%;
+      height: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      background-color: var(--mainWheatColour);
+      color: #000;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .card-wrapper.wide-card th,
+    .card-wrapper.wide-card td {
+      border: 2px solid lightyellow;
+      aspect-ratio: 1;
+      padding: 0;
+      text-align: center;
+      vertical-align: middle;
+      font-size: clamp(1rem, 3vw, 1.4rem);
+      font-weight: 700;
+      width: 20%;
+    }
+
+    .card-wrapper.wide-card th {
+      color: #fff;
+      font-size: clamp(0.8rem, 2vw, 1.2rem);
+      height: clamp(30px, 6vw, 50px);
+    }
+
+    .card-wrapper.wide-card th.firstCol {
+      background-color: var(--firstColColour);
+    }
+    .card-wrapper.wide-card th.secondCol {
+      background-color: var(--secondColColour);
+    }
+    .card-wrapper.wide-card th.thirdCol {
+      background-color: var(--thirdColColour);
+    }
+    .card-wrapper.wide-card th.fourthCol {
+      background-color: var(--fourthColColour);
+    }
+    .card-wrapper.wide-card th.fifthCol {
+      background-color: var(--fifthColColour);
+    }
+
+    .card-wrapper.wide-card td.drawn {
+      background: radial-gradient(circle at 50% 120%, #dce1af, #f6c079 10%, #e11b3c 80%, #93abe1 100%);
+      border-radius: 50%;
+      border-color: #e17000;
+    }
+
+    .card-wrapper.wide-card td.free-space {
+      background-color: lightyellow;
+      font-size: clamp(0.6rem, 1.5vw, 1rem);
+    }
+
+    /* ── Make the card fill remaining space ── */
+    #gameContainer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 100vh;
+    }
+
+    #rightGameScreen {
+      flex-shrink: 0;
+    }
+
+    #leftGameScreen {
+      flex: 1;
+      min-height: 0;
+    }
+    /* ── Center Card Styles ── */
+    #center-card {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px 0;
+      width: 100%;
+    }
+
+    #center-card .card-wrapper {
+      width: 100%;
+      max-width: 300px;
+      padding: 8px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    #center-card .card-wrapper table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      background-color: #F5DEB2;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #center-card .card-wrapper th,
+    #center-card .card-wrapper td {
+      border: 2px solid #fff;
+      aspect-ratio: 1;
+      padding: 4px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: clamp(14px, 2.5vw, 20px);
+      font-weight: 700;
+      width: 20%;
+    }
+
+    #center-card .card-wrapper th {
+      color: #fff;
+      font-size: clamp(12px, 2vw, 16px);
+    }
+
+    #center-card .card-wrapper th.firstCol {
+      background-color: #008ed6;
+    }
+    #center-card .card-wrapper th.secondCol {
+      background-color: #83d100;
+    }
+    #center-card .card-wrapper th.thirdCol {
+      background-color: #e17000;
+    }
+    #center-card .card-wrapper th.fourthCol {
+      background-color: #a71906;
+    }
+    #center-card .card-wrapper th.fifthCol {
+      background-color: #642e88;
+    }
+
+    #center-card .card-wrapper td.win-highlight {
+      background: #ffd700 !important;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+      animation: winPulse 0.8s ease-in-out infinite;
+    }
+
+    #center-card .card-wrapper td.free-space {
+      background-color: #fff8dc;
+    }
+
+    @keyframes winPulse {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    /* ── Card Number Badge ── */
+    .card-number {
+      text-align: center;
+      padding: 6px 0 4px 0;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 4px 4px 0 0;
+      letter-spacing: 0.5px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .card-number .card-id {
+      background: linear-gradient(135deg, #ffd700, #ff8c00);
+      padding: 0 10px;
+      border-radius: 12px;
+      color: #000;
+    }
+
+    footer {
+      padding: 12px;
+      text-align: center;
+    }
+
+    #modalOkBtn {
+      padding: 8px 32px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #7c8cff, #b47cff);
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    #modalOkBtn:active {
+      transform: scale(0.95);
+    }
+  </style>
 </head>
 <body>
 
@@ -14,9 +693,13 @@
 
         <!-- Top Bar -->
         <div id="topBar">
-          <span id="timerDisplay">05:00</span>
-          <span class="draw-count" id="drawCount">🎱 0/75</span>
-          <button class="control-btn" id="resetBtn">↺ New</button>
+          <div class="top-left">
+            <span class="stake-display">💰 100 ETB</span>
+            <span class="draw-count" id="drawCount">🎱 0/75</span>
+          </div>
+          <div class="top-right">
+            <span class="estimated-win">🏆 4,000</span>
+          </div>
         </div>
 
         <!-- Blower -->
@@ -32,64 +715,397 @@
           </div>
         </div>
 
-<!-- Card Number - Above the card -->
-<div style="text-align: center; font-size: 2rem; font-weight: 700; color: #ffffdd; padding: 0 0 4px 0;">
-  🎫 #45
-</div>
+        <!-- Card Number - Above the card -->
+        <div style="text-align: center; font-size: 2rem; font-weight: 700; color: #ffffdd; padding: 0 0 4px 0;">
+          🎫 #45
+        </div>
 
-<!-- Cards -->
-<!-- Single Wide Card - Full Bottom -->
-<div id="leftGameScreen">
-  <div class="card-wrapper wide-card">
-    <table>
-      <tr>
-        <th class="firstCol">B</th>
-        <th class="secondCol">I</th>
-        <th class="thirdCol">N</th>
-        <th class="fourthCol">G</th>
-        <th class="fifthCol">O</th>
-      </tr>
-      <tr>
-        <td>3</td><td>22</td><td>41</td><td>58</td><td>67</td>
-      </tr>
-      <tr>
-        <td>9</td><td>18</td><td>44</td><td>49</td><td>71</td>
-      </tr>
-      <tr>
-        <td>5</td><td>28</td><td class="free-space">★</td><td>52</td><td>63</td>
-      </tr>
-      <tr>
-        <td>12</td><td>17</td><td>39</td><td>55</td><td>74</td>
-      </tr>
-      <tr>
-        <td>1</td><td>25</td><td>31</td><td>47</td><td>69</td>
-      </tr>
-    </table>
-  </div>
-</div>
-    </div>
-
-  <!-- Winning Dialog -->
-    <!-- Winning Dialog - Shows Winning Card -->
-   <!-- Winning Dialog -->
-<div id="winningDialogContainer">
-  <div class="modal-inner">
-    <button class="modal-close" id="modalClose">&times;</button>
-    <div id="winningDialog">
-      <header>🎉 BINGO!</header>
-      <div id="content">
-        <div class="bingos-label">Winning Card</div>
-        <!-- The winning card will be injected here -->
-        <div id="center-card"></div>
-        <div id="prize"></div>
+        <!-- Single Wide Card - Full Bottom -->
+        <div id="leftGameScreen">
+          <div class="card-wrapper wide-card">
+            <table>
+              <tr>
+                <th class="firstCol">B</th>
+                <th class="secondCol">I</th>
+                <th class="thirdCol">N</th>
+                <th class="fourthCol">G</th>
+                <th class="fifthCol">O</th>
+              </tr>
+              <tr>
+                <td>3</td><td>22</td><td>41</td><td>58</td><td>67</td>
+              </tr>
+              <tr>
+                <td>9</td><td>18</td><td>44</td><td>49</td><td>71</td>
+              </tr>
+              <tr>
+                <td>5</td><td>28</td><td class="free-space">★</td><td>52</td><td>63</td>
+              </tr>
+              <tr>
+                <td>12</td><td>17</td><td>39</td><td>55</td><td>74</td>
+              </tr>
+              <tr>
+                <td>1</td><td>25</td><td>31</td><td>47</td><td>69</td>
+              </tr>
+            </table>
+          </div>
+        </div>
       </div>
-      <footer>
-        <button id="modalOkBtn">OK</button>
-      </footer>
+    </div>
+
+    <!-- Winning Dialog -->
+    <div id="winningDialogContainer">
+      <div class="modal-inner">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <div id="winningDialog">
+          <header>🎉 BINGO!</header>
+          <div id="content">
+            <div class="bingos-label">Winning Card</div>
+            <div id="center-card"></div>
+            <div id="prize"></div>
+          </div>
+          <footer>
+            <button id="modalOkBtn">OK</button>
+          </footer>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
-  <script src="game.js"></script>
+  <script>
+    (function() {
+      "use strict";
+
+      // ── DOM Refs ──
+      const drawCount = document.getElementById('drawCount');
+      const currentBall = document.getElementById('currentBall');
+      const ballNumber = document.getElementById('ballNumber');
+      const ballLetter = document.getElementById('ballLetter');
+      const ballsContainer = document.getElementById('elVisibleBallsContainer');
+      const winningDialog = document.getElementById('winningDialogContainer');
+      const modalClose = document.getElementById('modalClose');
+      const modalOkBtn = document.getElementById('modalOkBtn');
+      const balloon = document.getElementById('blower-balloon');
+
+      // ── State ──
+      let allBalls = [];
+      let drawnBalls = [];
+      let drawInterval = null;
+      let isGameOver = false;
+      let isComplete = false;
+
+      // ── Generate Balls ──
+      function generateBalls() {
+        allBalls = [];
+        const letters = ['B', 'I', 'N', 'G', 'O'];
+        const ranges = [
+          [1, 15],
+          [16, 30],
+          [31, 45],
+          [46, 60],
+          [61, 75]
+        ];
+        for (let i = 0; i < 5; i++) {
+          for (let num = ranges[i][0]; num <= ranges[i][1]; num++) {
+            allBalls.push({ number: num, letter: letters[i], color: 'ball-' + letters[i] });
+          }
+        }
+      }
+
+      // ── Shuffle ──
+      function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      // ── Update Tube Display ──
+      function updateTubeDisplay() {
+        ballsContainer.innerHTML = '';
+        const ballsToShow = drawnBalls.slice();
+
+        ballsToShow.forEach(function(ball) {
+          const ballEl = document.createElement('div');
+          ballEl.className = 'ball ' + ball.color;
+          ballEl.innerHTML = '<div class="inner-circle"><span>' + ball.number + '</span></div>';
+          ballsContainer.appendChild(ballEl);
+        });
+
+        const tube = document.getElementById('tube');
+        if (drawnBalls.length > 8) {
+          ballsContainer.classList.add('flow-up');
+          tube.classList.add('many-balls');
+        } else {
+          ballsContainer.classList.remove('flow-up');
+          tube.classList.remove('many-balls');
+        }
+
+        setTimeout(function() {
+          ballsContainer.scrollTop = ballsContainer.scrollHeight;
+          ballsContainer.scrollLeft = ballsContainer.scrollWidth;
+        }, 50);
+      }
+
+      // ── Draw Ball ──
+      function drawBall() {
+        if (isGameOver || isComplete) return;
+        if (drawnBalls.length >= 75) { finishGame(); return; }
+
+        const ball = allBalls.pop();
+        if (!ball) { finishGame(); return; }
+
+        drawnBalls.push(ball);
+        drawCount.textContent = '🎱 ' + drawnBalls.length + '/75';
+
+        // Show ball in blower
+        ballNumber.textContent = ball.number;
+        ballLetter.textContent = ball.letter;
+        const colorMap = { 'B': '#008ed6', 'I': '#83d100', 'N': '#e17000', 'G': '#a71906', 'O': '#642e88' };
+        ballNumber.style.color = colorMap[ball.letter] || '#fff';
+
+        currentBall.classList.remove('show');
+        setTimeout(function() { currentBall.classList.add('show'); }, 50);
+
+        balloon.style.background = 'radial-gradient(ellipse at 40% 35%, ' + colorMap[ball.letter] + '44, rgba(80,40,120,0.5) 100%)';
+        setTimeout(function() { balloon.style.background = ''; }, 400);
+
+        // Mark the card
+        document.querySelectorAll('.card-wrapper.wide-card td').forEach(function(cell) {
+          if (cell.textContent.trim() === String(ball.number)) {
+            cell.classList.add('drawn');
+          }
+        });
+
+        // Check for BINGO
+        const winResult = checkBingo();
+        if (winResult) {
+          showWinningCard(winResult);
+          return;
+        }
+
+        // Update tube with ALL drawn balls
+        updateTubeDisplay();
+      }
+
+      // ── Check BINGO ──
+      function checkBingo() {
+        const card = document.querySelector('.card-wrapper.wide-card table');
+        if (!card) return false;
+
+        const rows = card.querySelectorAll('tr');
+        const winningCells = [];
+
+        // Check Rows
+        for (let r = 1; r < rows.length; r++) {
+          const cells = rows[r].querySelectorAll('td');
+          let allMarked = true;
+          let lineCells = [];
+          for (let c = 0; c < 5; c++) {
+            if (!cells[c].classList.contains('drawn') && !cells[c].classList.contains('free-space')) {
+              allMarked = false;
+              break;
+            }
+            lineCells.push(cells[c]);
+          }
+          if (allMarked) {
+            return { type: 'row', index: r, cells: lineCells };
+          }
+        }
+
+        // Check Columns
+        for (let c = 0; c < 5; c++) {
+          let allMarked = true;
+          let lineCells = [];
+          for (let r = 1; r < rows.length; r++) {
+            const cell = rows[r].querySelectorAll('td')[c];
+            if (!cell.classList.contains('drawn') && !cell.classList.contains('free-space')) {
+              allMarked = false;
+              break;
+            }
+            lineCells.push(cell);
+          }
+          if (allMarked) {
+            return { type: 'column', index: c, cells: lineCells };
+          }
+        }
+
+        // Check Diagonal 1
+        let d1AllMarked = true;
+        let d1Cells = [];
+        for (let i = 0; i < 5; i++) {
+          const cell = rows[i + 1].querySelectorAll('td')[i];
+          if (!cell.classList.contains('drawn') && !cell.classList.contains('free-space')) {
+            d1AllMarked = false;
+            break;
+          }
+          d1Cells.push(cell);
+        }
+        if (d1AllMarked) {
+          return { type: 'diagonal1', cells: d1Cells };
+        }
+
+        // Check Diagonal 2
+        let d2AllMarked = true;
+        let d2Cells = [];
+        for (let i = 0; i < 5; i++) {
+          const cell = rows[i + 1].querySelectorAll('td')[4 - i];
+          if (!cell.classList.contains('drawn') && !cell.classList.contains('free-space')) {
+            d2AllMarked = false;
+            break;
+          }
+          d2Cells.push(cell);
+        }
+        if (d2AllMarked) {
+          return { type: 'diagonal2', cells: d2Cells };
+        }
+
+        return false;
+      }
+
+      // ── Show Winning Card ──
+      function showWinningCard(winResult) {
+        isGameOver = true;
+        isComplete = true;
+        stopDrawing();
+
+        if (window._ballTimeout) {
+          clearTimeout(window._ballTimeout);
+          window._ballTimeout = null;
+        }
+
+        const card = document.querySelector('.card-wrapper.wide-card table');
+        const clone = card.cloneNode(true);
+
+        clone.querySelectorAll('td').forEach(function(cell) {
+          cell.classList.remove('drawn');
+        });
+
+        const winningNumbers = new Set();
+        winResult.cells.forEach(function(cell) {
+          const text = cell.textContent.trim();
+          if (text !== '★') {
+            winningNumbers.add(text);
+          }
+        });
+
+        clone.querySelectorAll('td').forEach(function(cell) {
+          const text = cell.textContent.trim();
+          if (winningNumbers.has(text) || cell.classList.contains('free-space')) {
+            cell.classList.add('win-highlight');
+          }
+        });
+
+        let patternName = '';
+        switch (winResult.type) {
+          case 'row':
+            patternName = 'Row ' + winResult.index + ' BINGO!';
+            break;
+          case 'column':
+            patternName = 'Column ' + (winResult.index + 1) + ' BINGO!';
+            break;
+          case 'diagonal1':
+            patternName = 'Diagonal BINGO!';
+            break;
+          case 'diagonal2':
+            patternName = 'Diagonal BINGO!';
+            break;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'card-wrapper';
+        wrapper.appendChild(clone);
+
+        const centerCard = document.getElementById('center-card');
+        centerCard.innerHTML = '';
+        centerCard.appendChild(wrapper);
+
+        const prize = 50;
+        document.getElementById('prize').textContent = '🏆 Prize: ' + prize + ' ETB';
+        document.querySelector('#winningDialog header').textContent = '🎉 ' + patternName;
+
+        winningDialog.classList.add('show');
+      }
+
+      // ── Finish Game ──
+      function finishGame() {
+        if (isComplete) return;
+        isComplete = true;
+        isGameOver = true;
+        stopDrawing();
+        drawCount.textContent = '🎱 75/75 ✓';
+        drawCount.classList.add('complete');
+        currentBall.classList.remove('show');
+        setTimeout(function() {
+          ballNumber.textContent = '🎯';
+          ballLetter.textContent = 'DONE';
+          currentBall.classList.add('show');
+          currentBall.classList.add('complete');
+        }, 300);
+      }
+
+      // ── Drawing Controls ──
+      function startDrawing() {
+        if (isGameOver || isComplete || drawInterval) return;
+        drawInterval = setInterval(drawBall, 2000);
+      }
+
+      function stopDrawing() {
+        if (drawInterval) { clearInterval(drawInterval);
+          drawInterval = null; }
+      }
+
+      // ── Reset ──
+      function resetGame() {
+        stopDrawing();
+        isGameOver = false;
+        isComplete = false;
+        drawnBalls = [];
+
+        drawCount.textContent = '🎱 0/75';
+        drawCount.classList.remove('complete');
+        currentBall.classList.remove('show', 'complete');
+        ballNumber.textContent = '—';
+        ballLetter.textContent = 'B';
+        ballNumber.style.color = '#fff';
+        balloon.style.background = '';
+
+        ballsContainer.innerHTML = '';
+        document.querySelectorAll('.card-wrapper td').forEach(function(cell) {
+          cell.classList.remove('drawn');
+        });
+
+        winningDialog.classList.remove('show');
+        generateBalls();
+        shuffle(allBalls);
+
+        setTimeout(startDrawing, 500);
+      }
+
+      // ── Events ──
+      modalClose.addEventListener('click', function() { winningDialog.classList.remove('show'); });
+      modalOkBtn.addEventListener('click', function() { winningDialog.classList.remove('show'); });
+      winningDialog.addEventListener('click', function(e) {
+        if (e.target === winningDialog) winningDialog.classList.remove('show');
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'r' || e.key === 'R') resetGame();
+        if (e.key === 'Escape') winningDialog.classList.remove('show');
+        if (e.key === ' ') { e.preventDefault();
+          stopDrawing(); }
+      });
+
+      // ── Init ──
+      generateBalls();
+      shuffle(allBalls);
+      setTimeout(startDrawing, 800);
+
+      // Auto-reset when all numbers are drawn (optional)
+      // Expose reset for debugging
+      window.resetBingo = resetGame;
+
+    })();
+  </script>
 </body>
 </html>

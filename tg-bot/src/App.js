@@ -5,6 +5,7 @@ import LoadingScreen from './components/ui/LoadingScreen';
 import HomePage from './pages/HomePage';
 import Stake from './games/bingo/Stake';
 import Pick from './games/bingo/Pick';
+import Game from './games/bingo/Game';
 import './App.css';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/bingo/stake" element={<Stake />} />
         <Route path="/bingo/pick" element={<Pick />} />
+        <Route path="/bingo/game" element={<Game />} />
       </Routes>
     );
   }

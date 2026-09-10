@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router-dom";
 
 const stakeOptions = [
-  { label: "5 Birr", amount: 100 },
-  { label: "10 Birr", amount: 500 },
-  { label: "20 Birr", amount: 1000 },
-  { label: "50 Birr", amount: 5000 },
+  { label: "5 Birr", amount: 5 },
+  { label: "10 Birr", amount: 10 },
+  { label: "20 Birr", amount: 20 },
+  { label: "50 Birr", amount: 50 },
 ];
 
 export default function Stake() {
