@@ -9,7 +9,7 @@ require('dotenv').config();
 
 const { initBot } = require('./bot');
 const { setupBingoSocket } = require('./socket/bingo');
-const User = require('./models/User');
+const User = require('./models/user');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
