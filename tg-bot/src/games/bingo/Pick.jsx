@@ -75,7 +75,7 @@ export default function Pick() {
       socket.off('bingo:room_info', handleRoomInfo);
       socket.off('bingo:error', handleError);
     };
-  }, []);
+  }, [getSocket]);
 
   const handleNumberClick = (number) => {
     if (!isGameActive) return;

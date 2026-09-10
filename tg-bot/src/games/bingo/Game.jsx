@@ -136,9 +136,7 @@ export default function Game() {
   const [ballVisible, setBallVisible] = useState(false);
   const [balloonColor, setBalloonColor] = useState("");
   const [isGameOver, setIsGameOver] = useState(false);
-  const [gameId, setGameId] = useState("");
   const [roomId, setRoomId] = useState("");
-  const [playerCount, setPlayerCount] = useState(0);
   const [estimatedWin, setEstimatedWin] = useState(0);
 
   const [winningDialog, setWinningDialog] = useState(false);
@@ -160,14 +158,11 @@ export default function Game() {
     }
 
     const handleRoomInfo = (data) => {
-      setGameId(data.gameId);
       setRoomId(data.roomId);
-      setPlayerCount(data.playerCount);
       setEstimatedWin(data.estimatedWin);
     };
 
     const handlePlayerJoined = (data) => {
-      setPlayerCount(data.playerCount);
       setEstimatedWin(data.estimatedWin);
     };
 
@@ -249,7 +244,7 @@ export default function Game() {
         clearTimeout(balloonTimeout.current);
       }
     };
-  }, [navigate, stakeAmount]);
+  }, [navigate, stakeAmount, getSocket, user?.telegramId]);
 
   const handleClaimBingo = () => {
     const socket = getSocket();

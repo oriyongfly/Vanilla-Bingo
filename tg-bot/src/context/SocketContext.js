@@ -1,7 +1,7 @@
 // src/context/SocketContext.js
 import React, { createContext, useContext, useRef, useState, useCallback } from 'react';
 import io from 'socket.io-client';
-import { getToken, clearToken } from '../utils/TokenStorage';
+import { getToken } from '../utils/TokenStorage';
 
 // Create context
 const SocketContext = createContext(null);
