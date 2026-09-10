@@ -38,7 +38,7 @@ const ROUND_END_DELAY_MS = 5000;
 
 const LETTERS = ['B', 'I', 'N', 'G', 'O'];
 const BALL_RANGES = [[1,15],[16,30],[31,45],[46,60],[61,75]];
-const STAKE_TIERS = [100, 500, 1000, 5000];
+const STAKE_TIERS = [5, 10, 20, 50];
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
 
