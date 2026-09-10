@@ -1,6 +1,6 @@
 const TelegramBot = require('node-telegram-bot-api');
 const dotenv = require('dotenv');
-const User = require('./models/user');
+const User = require('./models/User');
 
 // Load environment variables at module scope (always runs)
 dotenv.config();

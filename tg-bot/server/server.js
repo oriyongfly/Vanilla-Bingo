@@ -1,383 +1,234 @@
-// server/socket/bingo.js
+const express = require('express');
+const cors = require('cors');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
+const http = require('http');
+const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
-// Stake tiers configuration
-const STAKE_TIERS = [100, 500, 1000, 5000];
+const { initBot } = require('./bot');
+const { setupBingoSocket } = require('./socket/bingo');
+const User = require('./models/User');
 
-// Phase timing constants
-const PICKING_DURATION = 50; // seconds
-const DRAW_INTERVAL = 2000; // ms between balls
-const CYCLE_COOLDOWN = 5000; // ms after drawing ends before new cycle
+const app = express();
+const PORT = process.env.PORT || 5000;
+const MONGODB_URI = process.env.MONGODB_URI;
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const JWT_SECRET = process.env.JWT_SECRET;
 
-// Per-tier runtime state
-const tiers = new Map();
+// ─── Env validation ───────────────────────────────────────────────────────────
 
-// Stake tier key helper
-function tierKey(stakeAmount) {
-  return `stake_${stakeAmount}`;
+if (!MONGODB_URI) {
+  console.error('❌ MONGODB_URI is not set in environment variables');
+  process.exit(1);
 }
 
-// Broadcast channel helper
-function broadcastChannel(stakeAmount) {
-  return `bingo:stake:${stakeAmount}`;
+if (!BOT_TOKEN) {
+  console.error('❌ BOT_TOKEN is not set in environment variables');
+  process.exit(1);
 }
 
-// Room id helper
-function roomId(stakeAmount, gameId) {
-  return `bingo:${stakeAmount}:${gameId}`;
+if (!JWT_SECRET) {
+  console.error('❌ JWT_SECRET is not set in environment variables');
+  process.exit(1);
 }
 
-// Generate a new gameId
-function generateGameId() {
-  return crypto.randomBytes(8).toString('hex');
-}
+// ─── Middleware ───────────────────────────────────────────────────────────────
 
-// Estimate win based on player count and stake
-function estimateWin(stakeAmount, playerCount) {
-  // Simple estimate: 90% of total pot returned to winner
-  const pot = stakeAmount * playerCount;
-  return Math.floor(pot * 0.9);
-}
+app.use(cors());
+app.use(express.json());
 
-// Run a single cycle for a stake tier
-async function runCycle(io, stakeAmount, roomManager) {
-  const key = tierKey(stakeAmount);
-  const tier = tiers.get(key);
-  if (!tier) return;
+// ─── Routes ───────────────────────────────────────────────────────────────────
 
-  // ---- PICKING PHASE ----
-  const gameId = generateGameId();
-  const currentRoomId = roomId(stakeAmount, gameId);
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Server is running' });
+});
 
-  tier.phase = 'picking';
-  tier.gameId = gameId;
-  tier.roomId = currentRoomId;
-  tier.timeLeft = PICKING_DURATION;
-  tier.players = [];
-  tier.spectators = [];
+// Authentication — verify Telegram initData and issue JWT
+app.post('/api/auth/login', async (req, res) => {
+  const { initData } = req.body;
 
-  // Create room in manager
-  roomManager.createRoom(currentRoomId, { stakeAmount, gameId });
-
-  io.to(broadcastChannel(stakeAmount)).emit('bingo:phase_changed', {
-    phase: 'picking',
-    gameId,
-    roomId: currentRoomId,
-    timeLeft: PICKING_DURATION,
-    stakeAmount,
-  });
-
-  // Countdown loop (1s ticks)
-  await new Promise((resolve) => {
-    tier.interval = setInterval(() => {
-      tier.timeLeft -= 1;
-
-      io.to(broadcastChannel(stakeAmount)).emit('bingo:tick', {
-        gameId,
-        timeLeft: tier.timeLeft,
-        stakeAmount,
-      });
-
-      if (tier.timeLeft <= 0) {
-        clearInterval(tier.interval);
-        tier.interval = null;
-        resolve();
-      }
-    }, 1000);
-  });
-
-  // ---- CHECK FOR PLAYERS ----
-  const room = roomManager.getRoom(currentRoomId);
-  const playerCount = room ? room.players.length : 0;
-  tier.playerCount = playerCount;
-
-  if (playerCount === 0) {
-    // Skip drawing, immediately start new cycle
-    roomManager.removeRoom(currentRoomId);
-    io.to(broadcastChannel(stakeAmount)).emit('bingo:phase_changed', {
-      phase: 'idle',
-      gameId,
-      roomId: currentRoomId,
-      timeLeft: 0,
-      stakeAmount,
-      message: 'No players joined',
-    });
-    return; // caller will loop
+  if (!initData) {
+    return res.status(400).json({ success: false, message: 'initData is required' });
   }
 
-  // ---- DRAWING PHASE ----
-  tier.phase = 'drawing';
-  io.to(broadcastChannel(stakeAmount)).emit('bingo:phase_changed', {
-    phase: 'drawing',
-    gameId,
-    roomId: currentRoomId,
-    stakeAmount,
-    playerCount,
-    estimatedWin: estimateWin(stakeAmount, playerCount),
-  });
+  try {
+    // 1. Parse initData
+    const urlParams = new URLSearchParams(initData);
+    const params = {};
+    let hash = null;
 
-  // Draw one ball every 2 seconds until winner or all balls drawn
-  const totalBalls = 90;
-  let drawnCount = 0;
-  let winnerFound = false;
-
-  await new Promise((resolve) => {
-    tier.drawInterval = setInterval(() => {
-      drawnCount += 1;
-      const ball = drawnCount; // simplified sequential draw
-
-      io.to(currentRoomId).emit('bingo:ball_drawn', {
-        gameId,
-        ball,
-        drawnCount,
-        stakeAmount,
-      });
-
-      // Check for winner via roomManager
-      const currentRoom = roomManager.getRoom(currentRoomId);
-      if (currentRoom && currentRoom.winner) {
-        winnerFound = true;
-        clearInterval(tier.drawInterval);
-        tier.drawInterval = null;
-        io.to(currentRoomId).emit('bingo:winner', {
-          gameId,
-          winner: currentRoom.winner,
-          stakeAmount,
-        });
-        resolve();
-        return;
+    for (const [key, value] of urlParams.entries()) {
+      if (key === 'hash') {
+        hash = value;
+      } else {
+        params[key] = value;
       }
-
-      if (drawnCount >= totalBalls) {
-        clearInterval(tier.drawInterval);
-        tier.drawInterval = null;
-        io.to(currentRoomId).emit('bingo:no_winner', { gameId, stakeAmount });
-        resolve();
-      }
-    }, DRAW_INTERVAL);
-  });
-
-  // ---- COOLDOWN ----
-  tier.phase = 'cooldown';
-  io.to(broadcastChannel(stakeAmount)).emit('bingo:phase_changed', {
-    phase: 'cooldown',
-    gameId,
-    roomId: currentRoomId,
-    stakeAmount,
-    winnerFound,
-    cooldownMs: CYCLE_COOLDOWN,
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, CYCLE_COOLDOWN));
-
-  // Clean up room
-  roomManager.removeRoom(currentRoomId);
-}
-
-// Continuous loop per tier
-async function loopTier(io, stakeAmount, roomManager) {
-  while (true) {
-    try {
-      await runCycle(io, stakeAmount, roomManager);
-    } catch (err) {
-      console.error(`❌ Error in bingo cycle for stake ${stakeAmount}:`, err);
-      // brief pause before retrying to avoid tight error loop
-      await new Promise((r) => setTimeout(r, 3000));
     }
+
+    if (!hash) {
+      return res.status(400).json({ success: false, message: 'Missing hash in initData' });
+    }
+
+    // 2. Verify HMAC
+    const sortedKeys = Object.keys(params).sort();
+    const dataCheckString = sortedKeys.map(key => `${key}=${params[key]}`).join('\n');
+
+    const secretKey = crypto
+      .createHmac('sha256', 'WebAppData')
+      .update(BOT_TOKEN)
+      .digest();
+
+    const calculatedHash = crypto
+      .createHmac('sha256', secretKey)
+      .update(dataCheckString)
+      .digest('hex');
+
+    if (!crypto.timingSafeEqual(
+      Buffer.from(calculatedHash, 'hex'),
+      Buffer.from(hash, 'hex')
+    )) {
+      return res.status(401).json({ success: false, message: 'Invalid initData signature' });
+    }
+
+    // 3. Parse Telegram user
+    let telegramUserData;
+    try {
+      telegramUserData = JSON.parse(params.user);
+    } catch {
+      return res.status(400).json({ success: false, message: 'Invalid user data in initData' });
+    }
+
+    const telegramUser = {
+      id: telegramUserData.id,
+      first_name: telegramUserData.first_name || '',
+      last_name: telegramUserData.last_name || '',
+      username: telegramUserData.username || '',
+    };
+
+    // 4. Upsert user
+    let user = await User.findOne({ telegramId: telegramUser.id });
+
+    if (!user) {
+      user = new User({
+        telegramId: telegramUser.id,
+        fName: telegramUser.first_name,
+        lName: telegramUser.last_name,
+        username: telegramUser.username,
+      });
+      await user.save();
+    }
+
+    // 5. Load wallet + progress
+    const Wallet = require('./models/Wallet');
+    const UserProgress = require('./models/UserProgress');
+    const wallet = await Wallet.getOrCreate(user._id);
+    const progress = await UserProgress.getOrCreate(user._id);
+
+    // 6. Sign JWT
+    const token = jwt.sign(
+      { userId: user._id, telegramId: user.telegramId },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // 7. Respond
+    res.json({
+      success: true,
+      message: 'Authentication successful',
+      access_token: token,
+      user: {
+        id: user._id,
+        telegramId: user.telegramId,
+        firstName: user.fName || telegramUser.first_name || '',
+        lastName: user.lName || telegramUser.last_name || '',
+        username: user.username || telegramUser.username || '',
+        phone: user.phone || '',
+        balance: wallet.balance,
+        withdrawableBalance: wallet.withdrawableBalance,
+        lockedBalance: wallet.lockedBalance,
+        points: progress.totalPoints,
+        level: progress.level,
+      }
+    });
+
+  } catch (error) {
+    console.error('Auth verification error:', error);
+    return res.status(500).json({ success: false, message: 'Server error during authentication' });
+  }
+});
+
+// ─── HTTP server + Socket.IO ──────────────────────────────────────────────────
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || '*',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'],
+});
+
+// Socket.IO authentication middleware
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+      console.warn('⚠️ Socket connection attempt without token');
+      return next(new Error('Authentication required'));
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return next(new Error('User not found'));
+    }
+
+    socket.user = {
+      id: user._id,
+      telegramId: user.telegramId,
+      username: user.username,
+    };
+
+    next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return next(new Error('Token expired'));
+    }
+    return next(new Error('Invalid token'));
+  }
+});
+
+// Bingo socket handlers
+setupBingoSocket(io);
+
+// ─── Start server ─────────────────────────────────────────────────────────────
+
+async function startServer() {
+  try {
+    console.log('🔄 Connecting to MongoDB...');
+    await mongoose.connect(MONGODB_URI);
+    console.log('✅ MongoDB connected successfully');
+
+    server.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+      console.log(`✅ Socket.IO attached and listening`);
+      console.log(`✅ Socket.IO auth middleware enabled`);
+      initBot().catch(err => console.error('❌ Bot failed to start:', err));
+    });
+  } catch (error) {
+    console.error('❌ Failed to connect to MongoDB:', error.message);
+    process.exit(1);
   }
 }
 
-// Initialize a tier's runtime state
-function initTier(stakeAmount) {
-  const key = tierKey(stakeAmount);
-  if (!tiers.has(key)) {
-    tiers.set(key, {
-      stakeAmount,
-      phase: 'idle',
-      gameId: null,
-      roomId: null,
-      timeLeft: 0,
-      playerCount: 0,
-      players: [],
-      spectators: [],
-      interval: null,
-      drawInterval: null,
-    });
-  }
-}
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected. Attempting to reconnect...');
+});
 
-// Minimal room manager (placeholder — assumes existing room logic)
-// NOTE: Replace this with your actual room manager import/usage.
-function createRoomManager() {
-  const rooms = new Map();
-
-  return {
-    createRoom(id, meta) {
-      rooms.set(id, {
-        id,
-        meta,
-        players: [],
-        spectators: [],
-        winner: null,
-        ...meta,
-      });
-    },
-    getRoom(id) {
-      return rooms.get(id) || null;
-    },
-    removeRoom(id) {
-      rooms.delete(id);
-    },
-    addPlayer(id, player) {
-      const room = rooms.get(id);
-      if (room) room.players.push(player);
-    },
-    addSpectator(id, spectator) {
-      const room = rooms.get(id);
-      if (room) room.spectators.push(spectator);
-    },
-  };
-}
-
-function setupBingoSocket(io) {
-  const roomManager = createRoomManager();
-
-  // ---- Start continuous cycles for each stake tier ----
-  for (const stakeAmount of STAKE_TIERS) {
-    initTier(stakeAmount);
-    // fire-and-forget continuous loop
-    loopTier(io, stakeAmount, roomManager).catch((err) => {
-      console.error(`❌ Fatal error in tier loop for ${stakeAmount}:`, err);
-    });
-  }
-
-  console.log('✅ Bingo cycles started for tiers:', STAKE_TIERS.join(', '));
-
-  io.on('connection', (socket) => {
-    const user = socket.user;
-
-    // ---- bingo:get_status ----
-    socket.on('bingo:get_status', ({ stakeAmount } = {}, callback) => {
-      const tier = tiers.get(tierKey(stakeAmount));
-      if (!tier) {
-        const response = { error: 'Invalid stake tier' };
-        if (typeof callback === 'function') callback(response);
-        return;
-      }
-
-      const response = {
-        phase: tier.phase,
-        gameId: tier.gameId,
-        roomId: tier.roomId,
-        timeLeft: tier.timeLeft,
-        stakeAmount,
-        playerCount: tier.playerCount,
-        estimatedWin: estimateWin(stakeAmount, tier.playerCount || 0),
-      };
-
-      if (typeof callback === 'function') callback(response);
-      else socket.emit('bingo:status', response);
-    });
-
-    // ---- bingo:join (as player) ----
-    socket.on('bingo:join', ({ stakeAmount } = {}) => {
-      const tier = tiers.get(tierKey(stakeAmount));
-      if (!tier || tier.phase !== 'picking' || !tier.roomId) {
-        socket.emit('bingo:join_error', { message: 'No active picking phase' });
-        return;
-      }
-
-      // Subscribe to broadcast channel for future cycles
-      socket.join(broadcastChannel(stakeAmount));
-      // Join the current room
-      socket.join(tier.roomId);
-
-      roomManager.addPlayer(tier.roomId, {
-        socketId: socket.id,
-        userId: user?.id,
-        telegramId: user?.telegramId,
-      });
-
-      // Update player count
-      const room = roomManager.getRoom(tier.roomId);
-      tier.playerCount = room ? room.players.length : 0;
-
-      socket.emit('bingo:joined', {
-        gameId: tier.gameId,
-        roomId: tier.roomId,
-        stakeAmount,
-        playerCount: tier.playerCount,
-      });
-
-      io.to(tier.roomId).emit('bingo:player_joined', {
-        gameId: tier.gameId,
-        playerCount: tier.playerCount,
-      });
-    });
-
-    // ---- bingo:spectate ----
-    socket.on('bingo:spectate', ({ stakeAmount } = {}) => {
-      const tier = tiers.get(tierKey(stakeAmount));
-      if (!tier || !tier.roomId) {
-        socket.emit('bingo:spectate_error', { message: 'No active game' });
-        return;
-      }
-
-      // Spectators join the room but are tracked separately
-      socket.join(broadcastChannel(stakeAmount));
-      socket.join(tier.roomId);
-
-      roomManager.addSpectator(tier.roomId, {
-        socketId: socket.id,
-        userId: user?.id,
-      });
-      tier.spectators.push(socket.id);
-
-      socket.emit('bingo:spectating', {
-        gameId: tier.gameId,
-        roomId: tier.roomId,
-        stakeAmount,
-        phase: tier.phase,
-      });
-    });
-
-    // ---- bingo:claim (only real players) ----
-    socket.on('bingo:claim', ({ stakeAmount, gameId } = {}) => {
-      const tier = tiers.get(tierKey(stakeAmount));
-      if (!tier || tier.gameId !== gameId) return;
-
-      const room = roomManager.getRoom(tier.roomId);
-      if (!room) return;
-
-      // Reject spectators
-      const isPlayer = room.players.some((p) => p.socketId === socket.id);
-      if (!isPlayer) {
-        socket.emit('bingo:claim_error', {
-          message: 'Spectators cannot claim',
-        });
-        return;
-      }
-
-      // Delegate to room claim logic (placeholder)
-      // room.claim(socket.id, ...)
-    });
-
-    // ---- disconnect cleanup ----
-    socket.on('disconnect', () => {
-      for (const tier of tiers.values()) {
-        if (!tier.roomId) continue;
-        const room = roomManager.getRoom(tier.roomId);
-        if (!room) continue;
-
-        room.players = room.players.filter((p) => p.socketId !== socket.id);
-        room.spectators = room.spectators.filter(
-          (s) => s.socketId !== socket.id
-        );
-        tier.spectators = tier.spectators.filter((id) => id !== socket.id);
-        tier.playerCount = room.players.length;
-      }
-    });
-  });
-}
-
-module.exports = { setupBingoSocket };
+startServer();

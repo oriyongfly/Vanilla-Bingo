@@ -28,7 +28,7 @@
 const Wallet = require('../models/Wallet');
 const GameHistory = require('../models/GameHistory');
 const Transaction = require('../models/Transaction');
-const User = require('../models/user');
+const User = require('../models/User');
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
