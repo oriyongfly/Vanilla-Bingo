@@ -1,10 +1,10 @@
 import React from "react";
 
 export default function Header({ user, profileOpen, onProfileToggle }) {
-  const firstName = user?.first_name || "Guest";
+  const firstName = user?.firstName || "Guest";
   const phone = user?.phone || "No phone number";
-  const balance = user?.balance || "ETB 0.00";
-  const coins = user?.coins || "10.00";
+  const balance = user?.balance != null ? `ETB ${user.balance.toFixed(2)}` : "ETB 0.00";
+  const points = user?.points ?? 0;
   const avatarInitial = firstName.charAt(0).toUpperCase();
 
   return (
@@ -43,7 +43,7 @@ export default function Header({ user, profileOpen, onProfileToggle }) {
           <div className="flex h-[27px] items-center whitespace-nowrap rounded-[20px] bg-gradient-to-r from-[#ffad00] to-[#ffbd18] px-3 text-[11px] font-extrabold text-[#090b10] shadow-[0_2px_8px_rgba(255,174,0,0.15)]">
             {balance}
             <span className="mx-[3px]">|</span>
-            Coins {coins}
+            Points {points}
           </div>
 
           <button
@@ -100,11 +100,11 @@ export default function Header({ user, profileOpen, onProfileToggle }) {
           </div>
 
           <div className="mt-[5px] text-[9px] font-bold uppercase text-[#777f93]">
-            Coins
+            Points
           </div>
 
           <div className="mt-[2px] text-[12px] font-extrabold text-[#ffad00]">
-            {coins}
+            {points}
           </div>
         </div>
       </div>

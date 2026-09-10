@@ -144,9 +144,11 @@ app.post('/api/auth/login', async (req, res) => {
       await user.save();
     }
 
-    // Load wallet balance
+    // Load wallet balance and user progress
     const Wallet = require('./models/Wallet');
+    const UserProgress = require('./models/UserProgress');
     const wallet = await Wallet.getOrCreate(user._id);
+    const progress = await UserProgress.getOrCreate(user._id);
     
     // 11. Sign JWT with { userId, telegramId }
     const token = jwt.sign(
@@ -169,9 +171,12 @@ app.post('/api/auth/login', async (req, res) => {
         firstName: user.fName,
         lastName: user.lName,
         username: user.username,
+        phone: user.phone,
         balance: wallet.balance,
         withdrawableBalance: wallet.withdrawableBalance,
         lockedBalance: wallet.lockedBalance,
+        points: progress.totalPoints,
+        level: progress.level,
       }
     });
     
