@@ -93,7 +93,7 @@ function generateBalls() {
 }
 
 function calcEstimatedWin(playerCount, stakeAmount) {
-  return Math.floor(playerCount * stakeAmount * 0.2);
+  return Math.floor(playerCount * stakeAmount * 0.8);
 }
 
 function validateBingo(card, drawnNumbers) {
@@ -197,6 +197,7 @@ function startDrawingPhase(io, tier) {
       gameId: tier.gameId,
       totalDrawn: tier.drawnBalls.length,
       remaining: tier.balls.length,
+      estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
     });
   }, DRAW_INTERVAL_MS);
 }
@@ -351,8 +352,24 @@ function setupBingoSocket(io) {
         return;
       }
 
-      if (tier.phase !== 'picking') {
-        socket.emit('bingo:error', { message: 'Picking phase has ended. Wait for the next round.' });
+      if (tier.phase !== 'picking' && tier.phase !== 'drawing') {
+        socket.emit('bingo:error', { message: 'No active game for this stake. Wait for the next round.' });
+        return;
+      }
+
+      // If drawing has already started, register as spectator only (no stake deducted)
+      if (tier.phase === 'drawing') {
+        socket.join(tier.tierChannel);
+        socket.emit('bingo:room_info', {
+          gameId: tier.gameId,
+          roomId: tier.roomId,
+          stakeAmount: tier.stakeAmount,
+          playerCount: tier.players.length,
+          estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
+          cardNumber,
+          takenCards: tier.players.map((p) => p.cardNumber),
+          lateJoin: true,
+        });
         return;
       }
 

@@ -63,20 +63,27 @@ export default function Pick() {
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setIsTimerRunning(false);
-          setIsGameActive(false);
-
+        // At 1 second remaining — emit join so it arrives before server phase flips
+        if (prev === 2) {
           const socket = getSocket();
           const currentNum = selectedNumRef.current;
-
           if (currentNum && socket) {
             socket.emit('bingo:join', {
               stakeAmount,
               cardNumber: currentNum,
               card: getCard(currentNum),
             });
+          }
+        }
+
+        if (prev <= 1) {
+          clearInterval(interval);
+          setIsTimerRunning(false);
+          setIsGameActive(false);
+
+          const currentNum = selectedNumRef.current;
+
+          if (currentNum) {
             navigate('/bingo/game', {
               state: { stakeAmount, cardNumber: currentNum },
             });

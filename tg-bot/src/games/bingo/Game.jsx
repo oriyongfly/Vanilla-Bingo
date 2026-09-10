@@ -179,6 +179,12 @@ export default function Game() {
       setEstimatedWin(data.estimatedWin);
     };
 
+    const handleStatus = (data) => {
+      if (data?.estimatedWin != null) {
+        setEstimatedWin(data.estimatedWin);
+      }
+    };
+
     const handlePlayerJoined = (data) => {
       setEstimatedWin(data.estimatedWin);
     };
@@ -186,6 +192,7 @@ export default function Game() {
     const handleBallDrawn = (data) => {
       setDrawnBalls(prev => [...prev, data.ball]);
       setCurrentBall(data.ball);
+      if (data.estimatedWin != null) setEstimatedWin(data.estimatedWin);
       setBallVisible(false);
       
       if (ballAnimationTimeout.current) {
@@ -238,6 +245,7 @@ export default function Game() {
     };
 
     socket.on('bingo:room_info', handleRoomInfo);
+    socket.on('bingo:status', handleStatus);
     socket.on('bingo:player_joined', handlePlayerJoined);
     socket.on('bingo:ball_drawn', handleBallDrawn);
     socket.on('bingo:winner', handleWinner);
@@ -247,6 +255,7 @@ export default function Game() {
 
     return () => {
       socket.off('bingo:room_info', handleRoomInfo);
+      socket.off('bingo:status', handleStatus);
       socket.off('bingo:player_joined', handlePlayerJoined);
       socket.off('bingo:ball_drawn', handleBallDrawn);
       socket.off('bingo:winner', handleWinner);
