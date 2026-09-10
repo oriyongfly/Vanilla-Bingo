@@ -161,6 +161,7 @@ app.post('/api/auth/login', async (req, res) => {
     );
     
     // 12. Return { access_token, user } - user includes wallet balance
+    // Use DB fields first, fall back to Telegram initData if DB fields are empty
     res.json({
       success: true,
       message: 'Authentication successful',
@@ -168,10 +169,10 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: user._id,
         telegramId: user.telegramId,
-        firstName: user.fName,
-        lastName: user.lName,
-        username: user.username,
-        phone: user.phone,
+        firstName: user.fName || telegramUser.first_name || '',
+        lastName: user.lName || telegramUser.last_name || '',
+        username: user.username || telegramUser.username || '',
+        phone: user.phone || '',
         balance: wallet.balance,
         withdrawableBalance: wallet.withdrawableBalance,
         lockedBalance: wallet.lockedBalance,
