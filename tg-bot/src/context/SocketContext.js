@@ -25,7 +25,7 @@ export function SocketProvider({ children }) {
   const connectSocket = useCallback(() => {
     return new Promise((resolve, reject) => {
       try {
-        const serverUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001';
+        const serverUrl = process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000';
         
         // If socket already exists and connected, resolve immediately
         if (socketRef.current && socketRef.current.connected) {
