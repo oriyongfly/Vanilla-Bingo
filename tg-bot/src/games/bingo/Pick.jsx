@@ -8,9 +8,15 @@ export default function Pick() {
   const navigate = useNavigate();
   const { getSocket } = useSocket();
   const stakeAmount = location.state?.stakeAmount || 0;
-  
+
+  // Read timeLeft and gameId from router state (set by Stake page)
+  const initialTimeLeft = location.state?.timeLeft;
+  const gameId = location.state?.gameId;
+
   const [selectedNum, setSelectedNum] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(50);
+  const [timeLeft, setTimeLeft] = useState(
+    typeof initialTimeLeft === "number" ? initialTimeLeft : 50
+  );
   const [isGameActive, setIsGameActive] = useState(true);
   const [isTimerRunning, setIsTimerRunning] = useState(true);
   const [playerCount, setPlayerCount] = useState(0);
@@ -24,6 +30,25 @@ export default function Pick() {
       navigate('/bingo/stake');
     }
   }, [location.state, navigate]);
+
+  // Edge case: picking phase already ended (timeLeft <= 0) → go to spectator view
+  useEffect(() => {
+    if (
+      typeof initialTimeLeft === "number" &&
+      initialTimeLeft <= 0 &&
+      location.state?.stakeAmount
+    ) {
+      navigate('/bingo/game', {
+        state: {
+          stakeAmount,
+          gameId,
+          spectator: true,
+          drawnBalls: [],
+        },
+        replace: true,
+      });
+    }
+  }, [initialTimeLeft, stakeAmount, gameId, location.state, navigate]);
 
   // Timer
   useEffect(() => {
@@ -45,6 +70,13 @@ export default function Pick() {
 
     return () => clearInterval(interval);
   }, [isTimerRunning, isGameActive]);
+
+  // Subscribe to tier channel on mount to receive ticks
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !stakeAmount) return;
+    socket.emit('bingo:subscribe', { stakeAmount });
+  }, [getSocket, stakeAmount]);
 
   // Socket event listeners
   useEffect(() => {
@@ -92,7 +124,7 @@ export default function Pick() {
 
   const handleConfirm = () => {
     if (!selectedNum) return;
-    
+
     const socket = getSocket();
     if (!socket) {
       console.error('Socket not connected');

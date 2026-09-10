@@ -129,14 +129,25 @@ export default function Game() {
   const { user } = useAuth();
   const stakeAmount = location.state?.stakeAmount || 0;
   const cardNumber = location.state?.cardNumber || 1;
-  
-  const [card] = useState(() => getCard(cardNumber));
-  const [drawnBalls, setDrawnBalls] = useState([]);
-  const [currentBall, setCurrentBall] = useState(null);
-  const [ballVisible, setBallVisible] = useState(false);
+
+  // Spectator flag + pre-drawn balls from router state
+  const spectator = location.state?.spectator === true;
+  const incomingDrawnBalls = location.state?.drawnBalls;
+
+  const [card] = useState(() => (spectator ? [] : getCard(cardNumber)));
+  const [drawnBalls, setDrawnBalls] = useState(() =>
+    Array.isArray(incomingDrawnBalls) ? incomingDrawnBalls : []
+  );
+  const [currentBall, setCurrentBall] = useState(
+    Array.isArray(incomingDrawnBalls) && incomingDrawnBalls.length > 0
+      ? incomingDrawnBalls[incomingDrawnBalls.length - 1]
+      : null
+  );
+  const [ballVisible, setBallVisible] = useState(
+    Array.isArray(incomingDrawnBalls) && incomingDrawnBalls.length > 0
+  );
   const [balloonColor, setBalloonColor] = useState("");
   const [isGameOver, setIsGameOver] = useState(false);
-  const [roomId, setRoomId] = useState("");
   const [estimatedWin, setEstimatedWin] = useState(0);
 
   const [winningDialog, setWinningDialog] = useState(false);
@@ -149,6 +160,13 @@ export default function Game() {
 
   const drawCount = drawnBalls.length;
 
+  // Subscribe to tier channel on mount to receive ball events
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !stakeAmount) return;
+    socket.emit('bingo:subscribe', { stakeAmount });
+  }, [getSocket, stakeAmount]);
+
   // Socket event listeners
   useEffect(() => {
     const socket = getSocket();
@@ -158,7 +176,6 @@ export default function Game() {
     }
 
     const handleRoomInfo = (data) => {
-      setRoomId(data.roomId);
       setEstimatedWin(data.estimatedWin);
     };
 
@@ -210,7 +227,7 @@ export default function Game() {
     };
 
     const handleRoundEnd = (data) => {
-      // Navigate back to pick screen
+      // Navigate to pick screen so the user can join the next round
       setTimeout(() => {
         navigate('/bingo/pick', { state: { stakeAmount } });
       }, 1000);
@@ -247,10 +264,10 @@ export default function Game() {
   }, [navigate, stakeAmount, getSocket, user?.telegramId]);
 
   const handleClaimBingo = () => {
+    if (spectator) return;
     const socket = getSocket();
     if (!socket) return;
-    
-    socket.emit('bingo:claim', { roomId });
+    socket.emit('bingo:claim', { stakeAmount });
   };
 
   return (
@@ -318,6 +335,21 @@ export default function Game() {
                   </span>
                 </div>
               </div>
+
+              {/* Spectator Banner */}
+              {spectator && (
+                <div
+                  className="
+                    flex items-center justify-center gap-2
+                    rounded-xl border border-[#7c8cff]/30
+                    bg-[#7c8cff]/10 px-3 py-2
+                    text-[.85rem] font-semibold text-[#a8b4ff]
+                  "
+                >
+                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#ff6b6b]" />
+                  👀 Watching live game
+                </div>
+              )}
 
               {/* Blower */}
               <div className="mx-auto w-full max-w-[320px]">
@@ -402,43 +434,47 @@ export default function Game() {
               </div>
 
               {/* Card Number & Claim Button */}
-              <div className="flex items-center justify-between px-2">
-                <div className="text-center text-[2rem] font-bold text-[#ffffdd]">
-                  🎫 #{cardNumber}
+              {!spectator && (
+                <div className="flex items-center justify-between px-2">
+                  <div className="text-center text-[2rem] font-bold text-[#ffffdd]">
+                    🎫 #{cardNumber}
+                  </div>
+                  {!isGameOver && drawCount > 0 && (
+                    <button
+                      onClick={handleClaimBingo}
+                      className="
+                        bg-gradient-to-br
+                        from-[#ffd700]
+                        to-[#ff6b00]
+                        text-white
+                        font-bold
+                        py-2
+                        px-4
+                        rounded-[12px]
+                        text-[0.9rem]
+                        transition-all
+                        hover:scale-[1.05]
+                        hover:shadow-[0_8px_30px_rgba(255,215,0,0.3)]
+                        active:scale-[0.95]
+                      "
+                    >
+                      BINGO!
+                    </button>
+                  )}
                 </div>
-                {!isGameOver && drawCount > 0 && (
-                  <button
-                    onClick={handleClaimBingo}
-                    className="
-                      bg-gradient-to-br
-                      from-[#ffd700]
-                      to-[#ff6b00]
-                      text-white
-                      font-bold
-                      py-2
-                      px-4
-                      rounded-[12px]
-                      text-[0.9rem]
-                      transition-all
-                      hover:scale-[1.05]
-                      hover:shadow-[0_8px_30px_rgba(255,215,0,0.3)]
-                      active:scale-[0.95]
-                    "
-                  >
-                    BINGO!
-                  </button>
-                )}
-              </div>
+              )}
 
-              {/* Bingo Card */}
-              <div className="flex min-h-0 w-full flex-1 items-stretch">
-                {card.length > 0 && (
-                  <BingoCard 
-                    card={card}
-                    drawnNumbers={drawnBalls.map((b) => b.number)} 
-                  />
-                )}
-              </div>
+              {/* Bingo Card (players only) */}
+              {!spectator && (
+                <div className="flex min-h-0 w-full flex-1 items-stretch">
+                  {card.length > 0 && (
+                    <BingoCard 
+                      card={card}
+                      drawnNumbers={drawnBalls.map((b) => b.number)} 
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

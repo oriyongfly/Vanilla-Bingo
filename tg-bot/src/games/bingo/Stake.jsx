@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
+import { useSocket } from "../../context/SocketContext";
 
 const stakeOptions = [
   { label: "5 Birr", amount: 5 },
@@ -10,6 +12,8 @@ const stakeOptions = [
 export default function Stake() {
   const balance = 12450;
   const navigate = useNavigate();
+  const { getSocket } = useSocket();
+  const statusListenerRef = useRef(null);
 
   const handleStake = (amount) => {
     if (amount <= 0) {
@@ -26,8 +30,51 @@ export default function Stake() {
       return;
     }
 
-    // Navigate instantly to pick page with stake amount
-    navigate('/bingo/pick', { state: { stakeAmount: amount } });
+    const socket = getSocket();
+    if (!socket) {
+      alert("Connection not ready. Please try again.");
+      return;
+    }
+
+    // Clean up any previous listener
+    if (statusListenerRef.current) {
+      socket.off("bingo:status", statusListenerRef.current);
+      statusListenerRef.current = null;
+    }
+
+    // Listener for the status response
+    const onStatus = (response) => {
+      socket.off("bingo:status", onStatus);
+      statusListenerRef.current = null;
+
+      if (!response) {
+        alert("Failed to get game status.");
+        return;
+      }
+
+      const { phase, gameId, timeLeft, drawnBalls } = response;
+
+      if (phase === "picking") {
+        navigate("/bingo/pick", {
+          state: { stakeAmount: amount, timeLeft, gameId },
+        });
+      } else if (phase === "drawing") {
+        navigate("/bingo/game", {
+          state: {
+            stakeAmount: amount,
+            gameId,
+            spectator: true,
+            drawnBalls,
+          },
+        });
+      } else {
+        alert("No active game for this stake. Please try again shortly.");
+      }
+    };
+
+    statusListenerRef.current = onStatus;
+    socket.on("bingo:status", onStatus);
+    socket.emit("bingo:get_status", { stakeAmount: amount });
   };
 
   return (
