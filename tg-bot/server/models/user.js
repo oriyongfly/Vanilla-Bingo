@@ -47,11 +47,8 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Index for better query performance
-userSchema.index({ telegramId: 1 });
-userSchema.index({ referralId: 1 });
-
-// Compound index for faster lookups by username (if needed)
+// Index for better query performance — telegramId and referralId already
+// indexed via field-level unique/index options above; only add username here
 userSchema.index({ username: 1 });
 
 

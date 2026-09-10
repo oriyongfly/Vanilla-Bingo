@@ -137,10 +137,9 @@ app.post('/api/auth/login', async (req, res) => {
       // Create new user if doesn't exist
       user = new User({
         telegramId: telegramUser.id,
-        firstName: telegramUser.first_name,
-        lastName: telegramUser.last_name,
+        fName: telegramUser.first_name,
+        lName: telegramUser.last_name,
         username: telegramUser.username,
-        phoneNumber: telegramUser.phone_number || 'pending',
       });
       await user.save();
     }
@@ -167,8 +166,8 @@ app.post('/api/auth/login', async (req, res) => {
       user: {
         id: user._id,
         telegramId: user.telegramId,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.fName,
+        lastName: user.lName,
         username: user.username,
         balance: wallet.balance,
         withdrawableBalance: wallet.withdrawableBalance,

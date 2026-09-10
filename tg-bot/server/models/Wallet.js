@@ -32,9 +32,8 @@ const walletSchema = new mongoose.Schema({
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
 
-walletSchema.pre('save', function (next) {
+walletSchema.pre('save', function () {
   this.balance = (this.lockedBalance || 0) + (this.withdrawableBalance || 0);
-  next();
 });
 
 // ─── Instance Methods ──────────────────────────────────────────────────────────
