@@ -6,6 +6,7 @@
  *   PICKING phase (50s):
  *     - Server broadcasts bingo:tick every second with timeLeft
  *     - Players join by emitting bingo:join
+ *     - At timeLeft = 1, server emits bingo:game_starting so clients can navigate
  *     - At timeLeft = 0, transitions to DRAWING phase
  *
  *   DRAWING phase:
@@ -46,18 +47,19 @@ const STAKE_TIERS = [5, 10, 20, 50];
  * tiers: { [stakeAmount]: TierState }
  *
  * TierState = {
- *   stakeAmount:  number,
- *   phase:        'picking' | 'drawing' | 'ending',
- *   gameId:       string,
- *   roomId:       string,          // bingo:stake:{amount}:game:{gameId}
- *   tierChannel:  string,          // bingo:tier:{amount}  (broadcast to all)
- *   timeLeft:     number,          // seconds remaining in picking phase
- *   players:      Array<PlayerState>,
- *   spectators:   Array<{ socketId }>,
- *   balls:        Array<{ number, letter }>,
- *   drawnBalls:   Array<{ number, letter }>,
- *   tickInterval: Timer | null,
- *   drawInterval: Timer | null,
+ *   stakeAmount:         number,
+ *   phase:               'picking' | 'drawing' | 'ending',
+ *   gameId:              string,
+ *   roomId:              string,          // bingo:stake:{amount}:game:{gameId}
+ *   tierChannel:         string,          // bingo:tier:{amount}  (broadcast to all)
+ *   timeLeft:            number,          // seconds remaining in picking phase
+ *   players:             Array<PlayerState>,
+ *   spectators:          Array<{ socketId }>,
+ *   balls:               Array<{ number, letter }>,
+ *   drawnBalls:          Array<{ number, letter }>,
+ *   tickInterval:        Timer | null,
+ *   drawInterval:        Timer | null,
+ *   gameStartingEmitted: boolean,         // one-shot flag per picking phase
  * }
  *
  * PlayerState = {
@@ -125,14 +127,15 @@ function startPickingPhase(io, tier) {
   const gameId = generateGameId(tier.stakeAmount);
   const roomId = `bingo:stake:${tier.stakeAmount}:game:${gameId}`;
 
-  tier.phase      = 'picking';
-  tier.gameId     = gameId;
-  tier.roomId     = roomId;
-  tier.timeLeft   = PICK_DURATION_S;
-  tier.players    = [];
-  tier.spectators = [];
-  tier.balls      = generateBalls();
-  tier.drawnBalls = [];
+  tier.phase               = 'picking';
+  tier.gameId              = gameId;
+  tier.roomId              = roomId;
+  tier.timeLeft            = PICK_DURATION_S;
+  tier.players             = [];
+  tier.spectators          = [];
+  tier.balls               = generateBalls();
+  tier.drawnBalls          = [];
+  tier.gameStartingEmitted = false;
 
   console.log(`🟡 [${tier.stakeAmount} ETB] Picking phase started — ${gameId}`);
 
@@ -145,6 +148,17 @@ function startPickingPhase(io, tier) {
 
   tier.tickInterval = setInterval(() => {
     tier.timeLeft -= 1;
+
+    // One tick before zero: announce the game is starting so clients can
+    // navigate before the server flips phase. Emitted exactly once per round.
+    if (tier.timeLeft === 1 && !tier.gameStartingEmitted) {
+      tier.gameStartingEmitted = true;
+      io.to(tier.tierChannel).emit('bingo:game_starting', {
+        gameId: tier.gameId,
+        stakeAmount: tier.stakeAmount,
+      });
+      console.log(`📣 [${tier.stakeAmount} ETB] bingo:game_starting emitted — ${tier.gameId}`);
+    }
 
     io.to(tier.tierChannel).emit('bingo:tick', {
       gameId: tier.gameId,
@@ -290,6 +304,7 @@ function setupBingoSocket(io) {
       drawnBalls: [],
       tickInterval: null,
       drawInterval: null,
+      gameStartingEmitted: false,
     };
     startPickingPhase(io, tiers[stakeAmount]);
   }

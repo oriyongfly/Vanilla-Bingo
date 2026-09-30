@@ -57,13 +57,13 @@ export default function Pick() {
     }
   }, [initialTimeLeft, stakeAmount, gameId, location.state, navigate]);
 
-  // Timer
+  // Timer: countdown + join emit only (no navigation)
   useEffect(() => {
     if (!isTimerRunning || !isGameActive) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
-        // At 1 second remaining — emit join so it arrives before server phase flips
+        // At 2 seconds remaining — emit join so it arrives before server phase flips
         if (prev === 2) {
           const socket = getSocket();
           const currentNum = selectedNumRef.current;
@@ -80,19 +80,6 @@ export default function Pick() {
           clearInterval(interval);
           setIsTimerRunning(false);
           setIsGameActive(false);
-
-          const currentNum = selectedNumRef.current;
-
-          if (currentNum) {
-            navigate('/bingo/game', {
-              state: { stakeAmount, cardNumber: currentNum },
-            });
-          } else {
-            navigate('/bingo/game', {
-              state: { stakeAmount, spectator: true, drawnBalls: [] },
-            });
-          }
-
           return 0;
         }
         return prev - 1;
@@ -100,7 +87,7 @@ export default function Pick() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isTimerRunning, isGameActive, stakeAmount, getSocket, navigate]);
+  }, [isTimerRunning, isGameActive, stakeAmount, getSocket]);
 
   // Subscribe to tier channel on mount to receive ticks
   useEffect(() => {
@@ -130,6 +117,21 @@ export default function Pick() {
       }
     };
 
+    // Navigate only when the server announces the game is starting.
+    // Join emit already fired at prev === 2, so ordering is safe.
+    const handleGameStarting = () => {
+      const currentNum = selectedNumRef.current;
+      if (currentNum) {
+        navigate('/bingo/game', {
+          state: { stakeAmount, cardNumber: currentNum },
+        });
+      } else {
+        navigate('/bingo/game', {
+          state: { stakeAmount, spectator: true, drawnBalls: [] },
+        });
+      }
+    };
+
     const handleError = (error) => {
       console.error('Socket error:', error.message);
       // Optionally show error to user
@@ -137,14 +139,16 @@ export default function Pick() {
 
     socket.on('bingo:player_joined', handlePlayerJoined);
     socket.on('bingo:room_info', handleRoomInfo);
+    socket.on('bingo:game_starting', handleGameStarting);
     socket.on('bingo:error', handleError);
 
     return () => {
       socket.off('bingo:player_joined', handlePlayerJoined);
       socket.off('bingo:room_info', handleRoomInfo);
+      socket.off('bingo:game_starting', handleGameStarting);
       socket.off('bingo:error', handleError);
     };
-  }, [getSocket]);
+  }, [getSocket, navigate, stakeAmount]);
 
   const handleNumberClick = (number) => {
     if (!isGameActive) return;
