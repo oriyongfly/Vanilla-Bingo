@@ -5,14 +5,15 @@
  *
  *   PICKING phase (50s):
  *     - Server broadcasts bingo:tick every second with timeLeft
- *     - Players join by emitting bingo:join
- *     - At timeLeft = 1, server emits bingo:game_starting so clients can navigate
- *     - At timeLeft = 0, transitions to DRAWING phase
+ *     - Players select cards via bingo:select (live selection map broadcast)
+ *     - Players join by emitting bingo:join at game_starting
+ *     - At timeLeft = 5, server emits bingo:game_starting so clients can navigate
+ *     - At timeLeft = 0, transitions to DRAWING phase (with 3s grace period)
  *
  *   DRAWING phase:
  *     - Server draws one ball every 2s, broadcasts bingo:ball_drawn
- *     - Players claim by emitting bingo:claim
- *     - Server validates claim server-side
+ *     - Auto-checks every player for a completed pattern after each ball
+ *     - Players may also claim by emitting bingo:claim (fallback)
  *     - Winner found → broadcasts bingo:winner, waits 5s, starts new cycle
  *     - All 75 balls drawn with no winner → broadcasts bingo:game_over, waits 5s, starts new cycle
  *
@@ -36,6 +37,7 @@ const User = require('../models/user');
 const PICK_DURATION_S = 50;
 const DRAW_INTERVAL_MS = 2000;
 const ROUND_END_DELAY_MS = 5000;
+const DRAWING_GRACE_MS = 3000;
 
 const LETTERS = ['B', 'I', 'N', 'G', 'O'];
 const BALL_RANGES = [[1,15],[16,30],[31,45],[46,60],[61,75]];
@@ -60,6 +62,8 @@ const STAKE_TIERS = [5, 10, 20, 50];
  *   tickInterval:        Timer | null,
  *   drawInterval:        Timer | null,
  *   gameStartingEmitted: boolean,         // one-shot flag per picking phase
+ *   selections:          { [cardNumber]: number },   // cardNumber → count of users with that card tapped
+ *   userSelections:      { [userId]: number[] },     // userId → array of cardNumbers this user has tapped
  * }
  *
  * PlayerState = {
@@ -119,6 +123,26 @@ function clearTierTimers(tier) {
   if (tier.drawInterval) { clearInterval(tier.drawInterval); tier.drawInterval = null; }
 }
 
+// Remove a user's pending selections from the tier map and broadcast the update.
+function clearUserSelections(io, tier, userId) {
+  if (!userId || !tier.userSelections || !tier.userSelections[userId]) return;
+
+  const previous = tier.userSelections[userId];
+  for (const num of previous) {
+    if (tier.selections[num] != null) {
+      tier.selections[num] -= 1;
+      if (tier.selections[num] <= 0) delete tier.selections[num];
+    }
+  }
+  delete tier.userSelections[userId];
+
+  io.to(tier.tierChannel).emit('bingo:selections_updated', {
+    gameId: tier.gameId,
+    stakeAmount: tier.stakeAmount,
+    selections: tier.selections,
+  });
+}
+
 // ─── Cycle engine ─────────────────────────────────────────────────────────────
 
 function startPickingPhase(io, tier) {
@@ -136,6 +160,8 @@ function startPickingPhase(io, tier) {
   tier.balls               = generateBalls();
   tier.drawnBalls          = [];
   tier.gameStartingEmitted = false;
+  tier.selections          = {};
+  tier.userSelections      = {};
 
   console.log(`🟡 [${tier.stakeAmount} ETB] Picking phase started — ${gameId}`);
 
@@ -144,6 +170,7 @@ function startPickingPhase(io, tier) {
     gameId,
     timeLeft: PICK_DURATION_S,
     stakeAmount: tier.stakeAmount,
+    selections: {},
   });
 
   tier.tickInterval = setInterval(() => {
@@ -175,6 +202,7 @@ function startPickingPhase(io, tier) {
     }
   }, 1000);
 }
+
 function startDrawingPhase(io, tier) {
   clearTierTimers(tier);
 
@@ -237,8 +265,9 @@ function startDrawingPhase(io, tier) {
         }
       }
     }, DRAW_INTERVAL_MS);
-  }, 3000);
+  }, DRAWING_GRACE_MS);
 }
+
 async function finishRound(io, tier, winnerInfo) {
   if (tier.phase === 'ending') return;
   tier.phase = 'ending';
@@ -328,6 +357,8 @@ function setupBingoSocket(io) {
       tickInterval: null,
       drawInterval: null,
       gameStartingEmitted: false,
+      selections: {},
+      userSelections: {},
     };
     startPickingPhase(io, tiers[stakeAmount]);
   }
@@ -353,6 +384,7 @@ function setupBingoSocket(io) {
         estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
         drawnBalls: tier.drawnBalls,
         takenCards: tier.players.map((p) => p.cardNumber),
+        selections: tier.selections,
       });
     });
 
@@ -373,6 +405,49 @@ function setupBingoSocket(io) {
         estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
         drawnBalls: tier.drawnBalls,
         takenCards: tier.players.map((p) => p.cardNumber),
+        selections: tier.selections,
+      });
+    });
+
+    // ── bingo:select ────────────────────────────────────────────────────────
+    // Fires on every tap. Client sends its full current selection array.
+    // Server replaces this user's previous contributions with the new set and
+    // broadcasts the updated selections map to the whole tier.
+    socket.on('bingo:select', ({ stakeAmount, cardNumbers }) => {
+      const userId = socket.user?.telegramId;
+      if (!userId) return;
+
+      const tier = tiers[stakeAmount];
+      if (!tier) return;
+      if (tier.phase !== 'picking') return;
+
+      // Normalise input
+      const next = Array.isArray(cardNumbers)
+        ? cardNumbers.filter((n) => Number.isInteger(n))
+        : [];
+
+      // Remove this user's previous selections
+      if (!tier.userSelections) tier.userSelections = {};
+      const previous = tier.userSelections[userId] || [];
+
+      for (const num of previous) {
+        if (tier.selections[num] != null) {
+          tier.selections[num] -= 1;
+          if (tier.selections[num] <= 0) delete tier.selections[num];
+        }
+      }
+
+      // Add the new selections
+      for (const num of next) {
+        tier.selections[num] = (tier.selections[num] || 0) + 1;
+      }
+
+      tier.userSelections[userId] = next;
+
+      io.to(tier.tierChannel).emit('bingo:selections_updated', {
+        gameId: tier.gameId,
+        stakeAmount: tier.stakeAmount,
+        selections: tier.selections,
       });
     });
 
@@ -416,7 +491,13 @@ function setupBingoSocket(io) {
         return;
       }
 
-      // Prevent duplicate joins
+      // Reject if another player already claimed this exact card number
+      if (tier.players.some((p) => p.cardNumber === cardNumber)) {
+        socket.emit('bingo:error', { message: 'That card is already taken.' });
+        return;
+      }
+
+      // Prevent duplicate joins (same user)
       if (tier.players.some((p) => p.userId === userId)) {
         socket.emit('bingo:room_info', {
           gameId: tier.gameId,
@@ -509,13 +590,19 @@ function setupBingoSocket(io) {
     // ── disconnect ───────────────────────────────────────────────────────────
     socket.on('disconnect', () => {
       console.log(`🔌 Socket disconnected: ${socket.id}`);
+
+      const userId = socket.user?.telegramId;
+
       for (const tier of Object.values(tiers)) {
-        const index = tier.players.findIndex((p) => p.socketId === socket.id);
-        if (index !== -1) {
-          tier.players.splice(index, 1);
+        // Remove player entry if this socket belonged to one
+        const playerIndex = tier.players.findIndex((p) => p.socketId === socket.id);
+        if (playerIndex !== -1) {
+          tier.players.splice(playerIndex, 1);
           console.log(`👤 Player removed from [${tier.stakeAmount} ETB] (${tier.players.length} remaining)`);
-          break;
         }
+
+        // Clear any pending selections this user had tapped
+        clearUserSelections(io, tier, userId);
       }
     });
   });

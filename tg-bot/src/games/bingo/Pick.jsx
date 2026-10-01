@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useSocket } from "../../context/SocketContext";
 import { getCard } from "./Cards";
 
+const MAX_SELECTIONS = 4;
+
 export default function Pick() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -13,7 +15,8 @@ export default function Pick() {
   const initialTimeLeft = location.state?.timeLeft;
   const gameId = location.state?.gameId;
 
-  const [selectedNum, setSelectedNum] = useState(null);
+  const [selectedNums, setSelectedNums] = useState([]);
+  const [reservedCards, setReservedCards] = useState({});
   const [timeLeft, setTimeLeft] = useState(
     typeof initialTimeLeft === "number" ? initialTimeLeft : 50
   );
@@ -23,11 +26,11 @@ export default function Pick() {
   const [estimatedWin, setEstimatedWin] = useState(0);
   const [takenCards, setTakenCards] = useState([]);
 
-  const selectedNumRef = useRef(null);
+  const selectedNumsRef = useRef([]);
 
   useEffect(() => {
-    selectedNumRef.current = selectedNum;
-  }, [selectedNum]);
+    selectedNumsRef.current = selectedNums;
+  }, [selectedNums]);
 
   const numbers = Array.from({ length: 60 }, (_, i) => i + 1);
 
@@ -104,18 +107,26 @@ export default function Pick() {
       }
     };
 
-    // Fires ~1s before the server flips to drawing phase. Emit join here so
-    // the server has the last full second to register the player, then navigate.
+    const handleSelectionsUpdated = (data) => {
+      if (data && typeof data.selections === 'object' && data.selections !== null) {
+        setReservedCards(data.selections);
+      }
+    };
+
+    // Fires ~5s before the server flips to drawing phase. Emit one join per
+    // selected card so the server registers all of them, then navigate.
     const handleGameStarting = () => {
-      const currentNum = selectedNumRef.current;
-      if (currentNum) {
-        socket.emit('bingo:join', {
-          stakeAmount,
-          cardNumber: currentNum,
-          card: getCard(currentNum),
-        });
+      const currentNums = selectedNumsRef.current;
+      if (currentNums.length > 0) {
+        for (const num of currentNums) {
+          socket.emit('bingo:join', {
+            stakeAmount,
+            cardNumber: num,
+            card: getCard(num),
+          });
+        }
         navigate('/bingo/game', {
-          state: { stakeAmount, cardNumber: currentNum },
+          state: { stakeAmount, cardNumbers: currentNums },
         });
       } else {
         navigate('/bingo/game', {
@@ -131,12 +142,14 @@ export default function Pick() {
 
     socket.on('bingo:player_joined', handlePlayerJoined);
     socket.on('bingo:room_info', handleRoomInfo);
+    socket.on('bingo:selections_updated', handleSelectionsUpdated);
     socket.on('bingo:game_starting', handleGameStarting);
     socket.on('bingo:error', handleError);
 
     return () => {
       socket.off('bingo:player_joined', handlePlayerJoined);
       socket.off('bingo:room_info', handleRoomInfo);
+      socket.off('bingo:selections_updated', handleSelectionsUpdated);
       socket.off('bingo:game_starting', handleGameStarting);
       socket.off('bingo:error', handleError);
     };
@@ -146,13 +159,30 @@ export default function Pick() {
     if (!isGameActive) return;
     if (takenCards.includes(number)) return;
 
-    // Tapping the same card again deselects it
-    if (selectedNum === number) {
-      setSelectedNum(null);
-      return;
-    }
+    const socket = getSocket();
+    if (!socket) return;
 
-    setSelectedNum(number);
+    setSelectedNums((prev) => {
+      let next;
+
+      if (prev.includes(number)) {
+        // Deselect
+        next = prev.filter((n) => n !== number);
+      } else if (prev.length < MAX_SELECTIONS) {
+        // Add
+        next = [...prev, number];
+      } else {
+        // At cap — ignore silently
+        return prev;
+      }
+
+      socket.emit('bingo:select', {
+        stakeAmount,
+        cardNumbers: next,
+      });
+
+      return next;
+    });
   };
 
   const minutes = Math.floor(timeLeft / 60);
@@ -327,7 +357,7 @@ export default function Pick() {
                 max-[420px]:text-[1.3rem]
               "
             >
-              Pick Your Cartela
+              Pick Your Cartelas
             </h1>
             {playerCount > 0 && (
               <p className="text-[0.8rem] text-[rgba(255,255,255,0.4)]">
@@ -348,8 +378,11 @@ export default function Pick() {
             "
           >
             {numbers.map((number) => {
-              const isSelected = selectedNum === number;
+              const isSelected = selectedNums.includes(number);
               const isTaken = takenCards.includes(number);
+              // Reserved by someone else — only matters if not our own selection
+              const isReserved =
+                !isSelected && !isTaken && (reservedCards[number] || 0) > 0;
               const isDisabled = !isGameActive || isTaken;
 
               return (
@@ -398,6 +431,16 @@ export default function Pick() {
                           text-white
                           scale-[1.05]
                           shadow-[0_8px_30px_rgba(124,140,255,0.3)]
+                        `
+                        : isReserved
+                        ? `
+                          bg-[rgba(255,180,60,0.06)]
+                          border-[rgba(255,180,60,0.4)]
+                          text-[rgba(255,200,110,0.9)]
+                          cursor-pointer
+                          hover:bg-[rgba(255,180,60,0.12)]
+                          hover:border-[rgba(255,180,60,0.55)]
+                          active:scale-[0.95]
                         `
                         : `
                           bg-[rgba(255,255,255,0.04)]
@@ -461,6 +504,7 @@ export default function Pick() {
               flex
               justify-between
               items-center
+              gap-3
             "
           >
             <span
@@ -468,28 +512,51 @@ export default function Pick() {
                 text-[rgba(255,255,255,0.4)]
                 text-[0.8rem]
                 font-medium
+                whitespace-nowrap
               "
             >
-              Selected
+              Selected ({selectedNums.length}/{MAX_SELECTIONS})
             </span>
 
-            <div className="flex items-center gap-4">
-              <span
-                className={`
-                  text-[1.3rem]
-                  font-bold
-                  transition-colors
-                  duration-300
-                  ${
-                    selectedNum !== null
-                      ? "text-white"
-                      : "text-[rgba(255,255,255,0.2)]"
-                  }
-                  max-[420px]:text-[1.1rem]
-                `}
-              >
-                {selectedNum ?? "—"}
-              </span>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {selectedNums.length === 0 ? (
+                <span
+                  className="
+                    text-[1.1rem]
+                    font-bold
+                    text-[rgba(255,255,255,0.2)]
+                  "
+                >
+                  —
+                </span>
+              ) : (
+                selectedNums.map((num) => (
+                  <span
+                    key={num}
+                    className="
+                      inline-flex
+                      items-center
+                      justify-center
+                      min-w-[34px]
+                      h-[34px]
+                      px-2
+                      rounded-[8px]
+                      bg-gradient-to-br
+                      from-[#7c8cff]
+                      to-[#b47cff]
+                      text-white
+                      text-[0.95rem]
+                      font-bold
+                      shadow-[0_4px_14px_rgba(124,140,255,0.35)]
+                      max-[420px]:min-w-[30px]
+                      max-[420px]:h-[30px]
+                      max-[420px]:text-[0.85rem]
+                    "
+                  >
+                    {num}
+                  </span>
+                ))
+              )}
             </div>
           </div>
         </div>

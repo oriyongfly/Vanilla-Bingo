@@ -128,13 +128,25 @@ export default function Game() {
   const { getSocket } = useSocket();
   const { user } = useAuth();
   const stakeAmount = location.state?.stakeAmount || 0;
-  const cardNumber = location.state?.cardNumber || 1;
+
+  // Multi-card: prefer cardNumbers (array), fall back to single cardNumber
+  const cardNumbers = (() => {
+    if (Array.isArray(location.state?.cardNumbers) && location.state.cardNumbers.length > 0) {
+      return location.state.cardNumbers;
+    }
+    if (location.state?.cardNumber != null) {
+      return [location.state.cardNumber];
+    }
+    return [];
+  })();
 
   // Spectator flag + pre-drawn balls from router state
   const spectator = location.state?.spectator === true;
   const incomingDrawnBalls = location.state?.drawnBalls;
 
-  const [card] = useState(() => (spectator ? [] : getCard(cardNumber)));
+  const [cards] = useState(() =>
+    spectator ? [] : cardNumbers.map((n) => getCard(n))
+  );
   const [drawnBalls, setDrawnBalls] = useState(() =>
     Array.isArray(incomingDrawnBalls) ? incomingDrawnBalls : []
   );
@@ -455,11 +467,28 @@ export default function Game() {
                 </div>
               </div>
 
-              {/* Card Number & Claim Button */}
-              {!spectator && (
-                <div className="flex items-center justify-between px-2">
-                  <div className="text-center text-[2rem] font-bold text-[#ffffdd]">
-                    🎫 #{cardNumber}
+              {/* Card Numbers & Claim Button */}
+              {!spectator && cardNumbers.length > 0 && (
+                <div className="flex items-center justify-between px-2 gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[1.4rem] font-bold text-[#ffffdd]">
+                    {cardNumbers.map((num) => (
+                      <span
+                        key={num}
+                        className="
+                          inline-flex items-center justify-center
+                          min-w-[38px] h-[38px] px-2
+                          rounded-[10px]
+                          bg-white/[.06]
+                          border border-white/[.1]
+                          text-[1.05rem]
+                          max-[420px]:min-w-[32px]
+                          max-[420px]:h-[32px]
+                          max-[420px]:text-[0.9rem]
+                        "
+                      >
+                        🎫 {num}
+                      </span>
+                    ))}
                   </div>
                   {!isGameOver && drawCount > 0 && (
                     <button
@@ -478,6 +507,7 @@ export default function Game() {
                         hover:scale-[1.05]
                         hover:shadow-[0_8px_30px_rgba(255,215,0,0.3)]
                         active:scale-[0.95]
+                        shrink-0
                       "
                     >
                       BINGO!
@@ -486,15 +516,22 @@ export default function Game() {
                 </div>
               )}
 
-              {/* Bingo Card (players only) */}
-              {!spectator && (
-                <div className="flex min-h-0 w-full flex-1 items-stretch">
-                  {card.length > 0 && (
-                    <BingoCard 
-                      card={card}
-                      drawnNumbers={drawnBalls.map((b) => b.number)} 
-                    />
-                  )}
+              {/* Bingo Cards (players only) */}
+              {!spectator && cards.length > 0 && (
+                <div
+                  className="
+                    flex min-h-0 w-full flex-1 flex-col gap-3
+                    overflow-y-auto
+                  "
+                >
+                  {cards.map((c, idx) => (
+                    <div key={cardNumbers[idx]} className="w-full">
+                      <BingoCard
+                        card={c}
+                        drawnNumbers={drawnBalls.map((b) => b.number)}
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -518,7 +555,9 @@ export default function Game() {
               <div
                 className="
                   relative w-full max-w-[380px]
-                  overflow-hidden rounded-2xl
+                  max-h-[90vh]
+                  overflow-y-auto
+                  rounded-2xl
                   bg-white
                   shadow-[0_8px_32px_rgba(0,0,0,.5)]
                 "
@@ -552,17 +591,20 @@ export default function Game() {
 
                 {/* Content */}
                 <div className="px-5 py-4 text-[.95rem] text-[#e17010]">
-                  <div className="mb-2">Winning Card</div>
+                  <div className="mb-2">
+                    Winning Card{cards.length > 1 ? "s" : ""}
+                  </div>
 
-                  <div className="flex w-full justify-center">
-                    {card.length > 0 && (
+                  <div className="flex w-full flex-col items-center gap-3">
+                    {cards.map((c, idx) => (
                       <BingoCard
-                        card={card}
+                        key={cardNumbers[idx]}
+                        card={c}
                         drawnNumbers={drawnBalls.map((b) => b.number)}
                         winningNumbers={winningNumbers}
                         winning
                       />
-                    )}
+                    ))}
                   </div>
 
                   <div className="mt-4">
