@@ -14,7 +14,6 @@ export default function Pick() {
   const gameId = location.state?.gameId;
 
   const [selectedNum, setSelectedNum] = useState(null);
-  const [hasJoined, setHasJoined] = useState(false);
   const [timeLeft, setTimeLeft] = useState(
     typeof initialTimeLeft === "number" ? initialTimeLeft : 50
   );
@@ -105,11 +104,16 @@ export default function Pick() {
       }
     };
 
-    // Navigate only when the server announces the game is starting.
-    // Join emit already fired in handleNumberClick, so ordering is safe.
+    // Fires ~1s before the server flips to drawing phase. Emit join here so
+    // the server has the last full second to register the player, then navigate.
     const handleGameStarting = () => {
       const currentNum = selectedNumRef.current;
       if (currentNum) {
+        socket.emit('bingo:join', {
+          stakeAmount,
+          cardNumber: currentNum,
+          card: getCard(currentNum),
+        });
         navigate('/bingo/game', {
           state: { stakeAmount, cardNumber: currentNum },
         });
@@ -140,24 +144,15 @@ export default function Pick() {
 
   const handleNumberClick = (number) => {
     if (!isGameActive) return;
-
-    // Selection is locked once the player has joined
-    if (hasJoined) return;
-
     if (takenCards.includes(number)) return;
 
-    const socket = getSocket();
-    if (!socket) return;
-
-    // Immediately emit join with the chosen card
-    socket.emit('bingo:join', {
-      stakeAmount,
-      cardNumber: number,
-      card: getCard(number),
-    });
+    // Tapping the same card again deselects it
+    if (selectedNum === number) {
+      setSelectedNum(null);
+      return;
+    }
 
     setSelectedNum(number);
-    setHasJoined(true);
   };
 
   const minutes = Math.floor(timeLeft / 60);
@@ -355,11 +350,7 @@ export default function Pick() {
             {numbers.map((number) => {
               const isSelected = selectedNum === number;
               const isTaken = takenCards.includes(number);
-              // Once joined, lock every card visually (only the chosen one keeps
-              // the selected style; the rest show the disabled look).
-              const isLocked = hasJoined && !isSelected;
-              const isDisabled =
-                !isGameActive || isTaken || hasJoined;
+              const isDisabled = !isGameActive || isTaken;
 
               return (
                 <button
@@ -408,14 +399,6 @@ export default function Pick() {
                           scale-[1.05]
                           shadow-[0_8px_30px_rgba(124,140,255,0.3)]
                         `
-                        : isLocked
-                        ? `
-                          bg-[rgba(255,255,255,0.02)]
-                          border-[rgba(255,255,255,0.03)]
-                          text-[rgba(255,255,255,0.15)]
-                          cursor-not-allowed
-                          line-through
-                        `
                         : `
                           bg-[rgba(255,255,255,0.04)]
                           border-[rgba(255,255,255,0.06)]
@@ -461,18 +444,6 @@ export default function Pick() {
                       ✕
                     </span>
                   )}
-
-                  {isLocked && (
-                    <span
-                      className="
-                        absolute
-                        text-[0.6rem]
-                        text-[rgba(255,255,255,0.2)]
-                      "
-                    >
-                      🔒
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -503,18 +474,6 @@ export default function Pick() {
             </span>
 
             <div className="flex items-center gap-4">
-              {hasJoined && (
-                <span
-                  className="
-                    text-[0.7rem]
-                    font-semibold
-                    text-[#83d100]
-                  "
-                >
-                  ✓ Joined
-                </span>
-              )}
-
               <span
                 className={`
                   text-[1.3rem]

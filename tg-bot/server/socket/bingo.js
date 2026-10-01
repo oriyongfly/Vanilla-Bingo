@@ -213,9 +213,25 @@ function startDrawingPhase(io, tier) {
       remaining: tier.balls.length,
       estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
     });
+
+    // Auto-check every player for a completed pattern after this ball.
+    // The manual bingo:claim handler remains as a fallback, but this ensures
+    // the round ends immediately when someone completes a pattern.
+    const drawnNumbers = tier.drawnBalls.map((b) => b.number);
+    for (const player of tier.players) {
+      const result = validateBingo(player.card, drawnNumbers);
+      if (result.valid) {
+        console.log(`🏆 [${tier.stakeAmount} ETB] Auto-detected ${result.pattern} for ${player.userId} — ending round`);
+        finishRound(io, tier, {
+          userId: player.userId,
+          pattern: result.pattern,
+          betBreakdown: player.betBreakdown,
+        });
+        break;
+      }
+    }
   }, DRAW_INTERVAL_MS);
 }
-
 async function finishRound(io, tier, winnerInfo) {
   if (tier.phase === 'ending') return;
   tier.phase = 'ending';
