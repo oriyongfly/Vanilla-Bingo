@@ -124,6 +124,7 @@ export default function Pick() {
     const handleSelectionsUpdated = (data) => {
       if (data && typeof data.selections === 'object' && data.selections !== null) {
         setReservedCards(data.selections);
+        if (typeof data.estimatedWin === 'number') setEstimatedWin(data.estimatedWin);
       }
     };
 
