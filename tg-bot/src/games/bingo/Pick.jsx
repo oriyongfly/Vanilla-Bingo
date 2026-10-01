@@ -14,6 +14,7 @@ export default function Pick() {
   const gameId = location.state?.gameId;
 
   const [selectedNum, setSelectedNum] = useState(null);
+  const [hasJoined, setHasJoined] = useState(false);
   const [timeLeft, setTimeLeft] = useState(
     typeof initialTimeLeft === "number" ? initialTimeLeft : 50
   );
@@ -57,25 +58,12 @@ export default function Pick() {
     }
   }, [initialTimeLeft, stakeAmount, gameId, location.state, navigate]);
 
-  // Timer: countdown + join emit only (no navigation)
+  // Timer: countdown only (no join emit, no navigation)
   useEffect(() => {
     if (!isTimerRunning || !isGameActive) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
-        // At 2 seconds remaining — emit join so it arrives before server phase flips
-        if (prev === 2) {
-          const socket = getSocket();
-          const currentNum = selectedNumRef.current;
-          if (currentNum && socket) {
-            socket.emit('bingo:join', {
-              stakeAmount,
-              cardNumber: currentNum,
-              card: getCard(currentNum),
-            });
-          }
-        }
-
         if (prev <= 1) {
           clearInterval(interval);
           setIsTimerRunning(false);
@@ -87,7 +75,7 @@ export default function Pick() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isTimerRunning, isGameActive, stakeAmount, getSocket]);
+  }, [isTimerRunning, isGameActive]);
 
   // Subscribe to tier channel on mount to receive ticks
   useEffect(() => {
@@ -118,7 +106,7 @@ export default function Pick() {
     };
 
     // Navigate only when the server announces the game is starting.
-    // Join emit already fired at prev === 2, so ordering is safe.
+    // Join emit already fired in handleNumberClick, so ordering is safe.
     const handleGameStarting = () => {
       const currentNum = selectedNumRef.current;
       if (currentNum) {
@@ -152,16 +140,24 @@ export default function Pick() {
 
   const handleNumberClick = (number) => {
     if (!isGameActive) return;
+
+    // Selection is locked once the player has joined
+    if (hasJoined) return;
+
     if (takenCards.includes(number)) return;
 
-    // If already selected, unselect it
-    if (selectedNum === number) {
-      setSelectedNum(null);
-      return;
-    }
+    const socket = getSocket();
+    if (!socket) return;
 
-    // Select number
+    // Immediately emit join with the chosen card
+    socket.emit('bingo:join', {
+      stakeAmount,
+      cardNumber: number,
+      card: getCard(number),
+    });
+
     setSelectedNum(number);
+    setHasJoined(true);
   };
 
   const minutes = Math.floor(timeLeft / 60);
@@ -359,7 +355,11 @@ export default function Pick() {
             {numbers.map((number) => {
               const isSelected = selectedNum === number;
               const isTaken = takenCards.includes(number);
-              const isDisabled = !isGameActive || isTaken;
+              // Once joined, lock every card visually (only the chosen one keeps
+              // the selected style; the rest show the disabled look).
+              const isLocked = hasJoined && !isSelected;
+              const isDisabled =
+                !isGameActive || isTaken || hasJoined;
 
               return (
                 <button
@@ -408,6 +408,14 @@ export default function Pick() {
                           scale-[1.05]
                           shadow-[0_8px_30px_rgba(124,140,255,0.3)]
                         `
+                        : isLocked
+                        ? `
+                          bg-[rgba(255,255,255,0.02)]
+                          border-[rgba(255,255,255,0.03)]
+                          text-[rgba(255,255,255,0.15)]
+                          cursor-not-allowed
+                          line-through
+                        `
                         : `
                           bg-[rgba(255,255,255,0.04)]
                           border-[rgba(255,255,255,0.06)]
@@ -453,6 +461,18 @@ export default function Pick() {
                       ✕
                     </span>
                   )}
+
+                  {isLocked && (
+                    <span
+                      className="
+                        absolute
+                        text-[0.6rem]
+                        text-[rgba(255,255,255,0.2)]
+                      "
+                    >
+                      🔒
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -483,6 +503,18 @@ export default function Pick() {
             </span>
 
             <div className="flex items-center gap-4">
+              {hasJoined && (
+                <span
+                  className="
+                    text-[0.7rem]
+                    font-semibold
+                    text-[#83d100]
+                  "
+                >
+                  ✓ Joined
+                </span>
+              )}
+
               <span
                 className={`
                   text-[1.3rem]
