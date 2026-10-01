@@ -149,9 +149,10 @@ function startPickingPhase(io, tier) {
   tier.tickInterval = setInterval(() => {
     tier.timeLeft -= 1;
 
-    // One tick before zero: announce the game is starting so clients can
-    // navigate before the server flips phase. Emitted exactly once per round.
-    if (tier.timeLeft === 1 && !tier.gameStartingEmitted) {
+    // Five ticks before zero: announce the game is starting so clients have
+    // time to emit bingo:join before the drawing phase begins. Emitted exactly
+    // once per round.
+    if (tier.timeLeft === 5 && !tier.gameStartingEmitted) {
       tier.gameStartingEmitted = true;
       io.to(tier.tierChannel).emit('bingo:game_starting', {
         gameId: tier.gameId,
@@ -174,63 +175,69 @@ function startPickingPhase(io, tier) {
     }
   }, 1000);
 }
-
 function startDrawingPhase(io, tier) {
   clearTierTimers(tier);
 
-  if (tier.players.length === 0) {
-    // No players — skip drawing, start new round immediately
-    console.log(`⏭️  [${tier.stakeAmount} ETB] No players, skipping draw — starting new round`);
-    startPickingPhase(io, tier);
-    return;
-  }
-
+  // Flip the phase immediately so any bingo:join arriving during the grace
+  // period is correctly treated as a late join (spectator only, no deduction).
   tier.phase = 'drawing';
-  console.log(`▶️  [${tier.stakeAmount} ETB] Drawing started — ${tier.players.length} player(s)`);
 
-  io.to(tier.tierChannel).emit('bingo:phase_changed', {
-    phase: 'drawing',
-    gameId: tier.gameId,
-    stakeAmount: tier.stakeAmount,
-    playerCount: tier.players.length,
-    estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
-  });
-
-  tier.drawInterval = setInterval(() => {
-    if (tier.balls.length === 0) {
-      clearTierTimers(tier);
-      finishRound(io, tier, null);
+  // Grace period: give the last in-flight bingo:join emits a moment to land
+  // before we decide whether this round has any players at all.
+  setTimeout(() => {
+    if (tier.players.length === 0) {
+      // No players — skip drawing, start new round immediately
+      console.log(`⏭️  [${tier.stakeAmount} ETB] No players, skipping draw — starting new round`);
+      startPickingPhase(io, tier);
       return;
     }
 
-    const ball = tier.balls.pop();
-    tier.drawnBalls.push(ball);
+    console.log(`▶️  [${tier.stakeAmount} ETB] Drawing started — ${tier.players.length} player(s)`);
 
-    io.to(tier.tierChannel).emit('bingo:ball_drawn', {
-      ball,
+    io.to(tier.tierChannel).emit('bingo:phase_changed', {
+      phase: 'drawing',
       gameId: tier.gameId,
-      totalDrawn: tier.drawnBalls.length,
-      remaining: tier.balls.length,
+      stakeAmount: tier.stakeAmount,
+      playerCount: tier.players.length,
       estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
     });
 
-    // Auto-check every player for a completed pattern after this ball.
-    // The manual bingo:claim handler remains as a fallback, but this ensures
-    // the round ends immediately when someone completes a pattern.
-    const drawnNumbers = tier.drawnBalls.map((b) => b.number);
-    for (const player of tier.players) {
-      const result = validateBingo(player.card, drawnNumbers);
-      if (result.valid) {
-        console.log(`🏆 [${tier.stakeAmount} ETB] Auto-detected ${result.pattern} for ${player.userId} — ending round`);
-        finishRound(io, tier, {
-          userId: player.userId,
-          pattern: result.pattern,
-          betBreakdown: player.betBreakdown,
-        });
-        break;
+    tier.drawInterval = setInterval(() => {
+      if (tier.balls.length === 0) {
+        clearTierTimers(tier);
+        finishRound(io, tier, null);
+        return;
       }
-    }
-  }, DRAW_INTERVAL_MS);
+
+      const ball = tier.balls.pop();
+      tier.drawnBalls.push(ball);
+
+      io.to(tier.tierChannel).emit('bingo:ball_drawn', {
+        ball,
+        gameId: tier.gameId,
+        totalDrawn: tier.drawnBalls.length,
+        remaining: tier.balls.length,
+        estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
+      });
+
+      // Auto-check every player for a completed pattern after this ball.
+      // The manual bingo:claim handler remains as a fallback, but this ensures
+      // the round ends immediately when someone completes a pattern.
+      const drawnNumbers = tier.drawnBalls.map((b) => b.number);
+      for (const player of tier.players) {
+        const result = validateBingo(player.card, drawnNumbers);
+        if (result.valid) {
+          console.log(`🏆 [${tier.stakeAmount} ETB] Auto-detected ${result.pattern} for ${player.userId} — ending round`);
+          finishRound(io, tier, {
+            userId: player.userId,
+            pattern: result.pattern,
+            betBreakdown: player.betBreakdown,
+          });
+          break;
+        }
+      }
+    }, DRAW_INTERVAL_MS);
+  }, 3000);
 }
 async function finishRound(io, tier, winnerInfo) {
   if (tier.phase === 'ending') return;
