@@ -160,11 +160,24 @@ export default function Game() {
 
   const drawCount = drawnBalls.length;
 
-  // Subscribe to tier channel on mount to receive ball events
+  // Subscribe to tier channel on mount and re-subscribe on every reconnect
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !stakeAmount) return;
+
+    // Initial subscribe so the first load works without waiting for a connect event
     socket.emit('bingo:subscribe', { stakeAmount });
+
+    // Re-subscribe whenever the socket reconnects
+    const handleConnect = () => {
+      socket.emit('bingo:subscribe', { stakeAmount });
+    };
+
+    socket.on('connect', handleConnect);
+
+    return () => {
+      socket.off('connect', handleConnect);
+    };
   }, [getSocket, stakeAmount]);
 
   // Socket event listeners

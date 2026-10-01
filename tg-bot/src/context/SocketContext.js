@@ -26,17 +26,33 @@ export function SocketProvider({ children }) {
     return new Promise((resolve, reject) => {
       try {
         const serverUrl = process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000';
-        
+
         // If socket already exists and connected, resolve immediately
         if (socketRef.current && socketRef.current.connected) {
           resolve(socketRef.current);
           return;
         }
 
-        // If socket exists but disconnected, reconnect
+        // If socket exists but disconnected, reconnect and wait for the connect event
         if (socketRef.current) {
-          socketRef.current.connect();
-          resolve(socketRef.current);
+          const socket = socketRef.current;
+
+          // One-time listeners that resolve/reject THIS call and self-remove.
+          const onConnect = () => {
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onError);
+            resolve(socket);
+          };
+
+          const onError = (error) => {
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onError);
+            reject(error);
+          };
+
+          socket.once('connect', onConnect);
+          socket.once('connect_error', onError);
+          socket.connect();
           return;
         }
 
@@ -59,7 +75,6 @@ export function SocketProvider({ children }) {
           console.log('Socket connected');
           setIsConnected(true);
           disconnectToastShownRef.current = false;
-          resolve(socket);
         });
 
         // Global error event listener (deduped toasts)
@@ -73,7 +88,7 @@ export function SocketProvider({ children }) {
         socket.on('disconnect', (reason) => {
           console.log('Socket disconnected:', reason);
           setIsConnected(false);
-          
+
           // Only show toast for server-forced disconnects
           if (reason === 'io server disconnect' || reason === 'transport error') {
             if (!disconnectToastShownRef.current) {
@@ -90,10 +105,26 @@ export function SocketProvider({ children }) {
           disconnectToastShownRef.current = false;
         });
 
+        // One-shot listeners used only to resolve/reject THIS connectSocket call.
+        // They self-remove so they don't interfere with later reconnects.
+        const onInitialConnect = () => {
+          socket.off('connect', onInitialConnect);
+          socket.off('connect_error', onInitialConnectError);
+          resolve(socket);
+        };
+        const onInitialConnectError = (error) => {
+          socket.off('connect', onInitialConnect);
+          socket.off('connect_error', onInitialConnectError);
+          reject(error);
+        };
+        socket.once('connect', onInitialConnect);
+        socket.once('connect_error', onInitialConnectError);
+
+        // Handle late connect_error (e.g. transport error after retries) —
+        // keeps isConnected accurate without rejecting an already-settled promise.
         socket.on('connect_error', (error) => {
           console.error('Socket connection error:', error);
           setIsConnected(false);
-          reject(error);
         });
 
       } catch (error) {
