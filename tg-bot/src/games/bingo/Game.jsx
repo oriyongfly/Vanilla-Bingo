@@ -339,9 +339,6 @@ export default function Game() {
 
   const isWinner = user?.telegramId && winnerUserId === user.telegramId;
 
-  const minutes = Math.floor(0 / 60);
-  const seconds = 0;
-
   return (
     <>
       <div
