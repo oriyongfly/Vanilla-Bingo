@@ -17,11 +17,12 @@ export default function Pick() {
 
   const [selectedNums, setSelectedNums] = useState([]);
   const [reservedCards, setReservedCards] = useState({});
+  // Seeded from router state so the first render shows something before the
+  // first server tick arrives. The server is authoritative from then on.
   const [timeLeft, setTimeLeft] = useState(
     typeof initialTimeLeft === "number" ? initialTimeLeft : 50
   );
   const [isGameActive, setIsGameActive] = useState(true);
-  const [isTimerRunning, setIsTimerRunning] = useState(true);
   const [playerCount, setPlayerCount] = useState(0);
   const [estimatedWin, setEstimatedWin] = useState(0);
   const [takenCards, setTakenCards] = useState([]);
@@ -60,25 +61,6 @@ export default function Pick() {
     }
   }, [initialTimeLeft, stakeAmount, gameId, location.state, navigate]);
 
-  // Timer: countdown only (no join emit, no navigation)
-  useEffect(() => {
-    if (!isTimerRunning || !isGameActive) return;
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setIsTimerRunning(false);
-          setIsGameActive(false);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isTimerRunning, isGameActive]);
-
   // Subscribe to tier channel on mount to receive ticks
   useEffect(() => {
     const socket = getSocket();
@@ -105,6 +87,38 @@ export default function Pick() {
       if (Array.isArray(data.takenCards)) {
         setTakenCards(data.takenCards);
       }
+    };
+
+    const handleStatus = (data) => {
+      if (!data) return;
+      if (typeof data.timeLeft === "number") {
+        setTimeLeft(data.timeLeft);
+        if (data.timeLeft <= 0) setIsGameActive(false);
+      }
+      if (typeof data.playerCount === "number") setPlayerCount(data.playerCount);
+      if (typeof data.estimatedWin === "number") setEstimatedWin(data.estimatedWin);
+      if (Array.isArray(data.takenCards)) setTakenCards(data.takenCards);
+      if (data.selections && typeof data.selections === 'object') {
+        setReservedCards(data.selections);
+      }
+    };
+
+    const handleTick = (data) => {
+      if (typeof data.timeLeft === "number") {
+        setTimeLeft(data.timeLeft);
+        if (data.timeLeft <= 0) setIsGameActive(false);
+      }
+      if (typeof data.playerCount === "number") setPlayerCount(data.playerCount);
+      if (typeof data.estimatedWin === "number") setEstimatedWin(data.estimatedWin);
+    };
+
+    const handlePhaseChanged = (data) => {
+      if (data?.phase === 'drawing' || data?.phase === 'ending') {
+        setIsGameActive(false);
+        if (typeof data.timeLeft === "number") setTimeLeft(data.timeLeft);
+      }
+      if (typeof data.playerCount === "number") setPlayerCount(data.playerCount);
+      if (typeof data.estimatedWin === "number") setEstimatedWin(data.estimatedWin);
     };
 
     const handleSelectionsUpdated = (data) => {
@@ -144,6 +158,9 @@ export default function Pick() {
 
     socket.on('bingo:player_joined', handlePlayerJoined);
     socket.on('bingo:room_info', handleRoomInfo);
+    socket.on('bingo:status', handleStatus);
+    socket.on('bingo:tick', handleTick);
+    socket.on('bingo:phase_changed', handlePhaseChanged);
     socket.on('bingo:selections_updated', handleSelectionsUpdated);
     socket.on('bingo:game_starting', handleGameStarting);
     socket.on('bingo:error', handleError);
@@ -151,6 +168,9 @@ export default function Pick() {
     return () => {
       socket.off('bingo:player_joined', handlePlayerJoined);
       socket.off('bingo:room_info', handleRoomInfo);
+      socket.off('bingo:status', handleStatus);
+      socket.off('bingo:tick', handleTick);
+      socket.off('bingo:phase_changed', handlePhaseChanged);
       socket.off('bingo:selections_updated', handleSelectionsUpdated);
       socket.off('bingo:game_starting', handleGameStarting);
       socket.off('bingo:error', handleError);
