@@ -14,6 +14,41 @@ const BALL_COLORS = {
 
 const REDIRECT_DELAY_MS = 8000;
 
+// Given a bingo card (5×5 row-major array) and a pattern string from the
+// server ("Row 1", "Column 2", "Diagonal ↘", "Diagonal ↙"), return the
+// string values of every cell in that winning line so BingoCard can
+// highlight them gold.
+function resolveWinningCells(card, pattern) {
+  if (!card || !pattern) return [];
+  const cells = [];
+
+  const rowMatch = pattern.match(/^Row (\d+)$/);
+  if (rowMatch) {
+    const r = parseInt(rowMatch[1], 10) - 1;
+    card[r].forEach((v) => cells.push(String(v)));
+    return cells;
+  }
+
+  const colMatch = pattern.match(/^Column (\d+)$/);
+  if (colMatch) {
+    const c = parseInt(colMatch[1], 10) - 1;
+    card.forEach((row) => cells.push(String(row[c])));
+    return cells;
+  }
+
+  if (pattern === "Diagonal ↘") {
+    card.forEach((row, i) => cells.push(String(row[i])));
+    return cells;
+  }
+
+  if (pattern === "Diagonal ↙") {
+    card.forEach((row, i) => cells.push(String(row[4 - i])));
+    return cells;
+  }
+
+  return cells;
+}
+
 function Ball({ ball }) {
   return (
     <div
@@ -262,7 +297,19 @@ export default function Game() {
       setWinnerUserId(data.userId ?? null);
       setWinnerCardNumber(data.cardNumber ?? null);
       setWinningPattern(data.pattern || 'BINGO!');
-      setWinningNumbers([]);
+
+      // Compute which cells to highlight gold on the winner's card
+      if (data.cardNumber != null) {
+        try {
+          const winCard = getCard(data.cardNumber);
+          setWinningNumbers(resolveWinningCells(winCard, data.pattern));
+        } catch {
+          setWinningNumbers([]);
+        }
+      } else {
+        setWinningNumbers([]);
+      }
+
       setNoWinner(false);
 
       // Always show the dialog for every user — winner or observer
@@ -297,6 +344,15 @@ export default function Game() {
     const handleError = (error) => {
       console.error('Socket error:', error.message);
     };
+
+    socket.off('bingo:room_info', handleRoomInfo);
+    socket.off('bingo:status', handleStatus);
+    socket.off('bingo:player_joined', handlePlayerJoined);
+    socket.off('bingo:ball_drawn', handleBallDrawn);
+    socket.off('bingo:winner', handleWinner);
+    socket.off('bingo:game_over', handleGameOver);
+    socket.off('bingo:round_end', handleRoundEnd);
+    socket.off('bingo:error', handleError);
 
     socket.on('bingo:room_info', handleRoomInfo);
     socket.on('bingo:status', handleStatus);
@@ -643,8 +699,8 @@ export default function Game() {
                     </p>
                   ) : isWinner ? (
                     <>
-                      <div className="mb-2">
-                        Winning Card{cards.length > 1 ? "s" : ""}
+                      <div className="mb-2 text-[0.8rem] text-[rgba(0,0,0,0.4)] uppercase tracking-wider">
+                        Cartela #{winnerCardNumber} — {winningPattern}
                       </div>
 
                       <div className="flex w-full flex-col items-center gap-3">
@@ -659,20 +715,35 @@ export default function Game() {
                         ))}
                       </div>
 
-                      <div className="mt-4">
+                      <div className="mt-4 font-bold">
                         🏆 Prize: {prizeAmount} ETB
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="mb-2 text-[#7c8cff]">
-                        Cartela #{winnerCardNumber ?? "—"}
+                      <div className="mb-2 text-[0.8rem] text-[rgba(0,0,0,0.4)] uppercase tracking-wider">
+                        Cartela #{winnerCardNumber ?? "—"} — {winningPattern}
                       </div>
-                      <p className="text-[#7c8cff]">
-                        A player completed a Bingo pattern this round. Watch
-                        for the next round to try again.
-                      </p>
-                      <div className="mt-4">
+
+                      {winnerCardNumber != null && (() => {
+                        try {
+                          const winCard = getCard(winnerCardNumber);
+                          return (
+                            <div className="flex w-full flex-col items-center gap-3">
+                              <BingoCard
+                                card={winCard}
+                                drawnNumbers={drawnBalls.map((b) => b.number)}
+                                winningNumbers={winningNumbers}
+                                winning
+                              />
+                            </div>
+                          );
+                        } catch {
+                          return null;
+                        }
+                      })()}
+
+                      <div className="mt-4 font-bold">
                         🏆 Prize: {prizeAmount} ETB
                       </div>
                     </>

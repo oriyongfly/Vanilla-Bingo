@@ -102,6 +102,29 @@ function calcEstimatedWin(playerCount, stakeAmount) {
   return Math.floor(playerCount * stakeAmount * 0.8);
 }
 
+// During picking, no one is registered as a player yet. Estimate the prize
+// from the live selection map: each tap represents an intended stake.
+// Returns 0 when no cards are currently tapped.
+function calcSelectionEstimate(tier) {
+  if (!tier.selections) return 0;
+
+  const totalTapped = Object.keys(tier.selections).reduce((sum, key) => {
+    const count = tier.selections[key];
+    return sum + (Number.isFinite(count) ? count : 0);
+  }, 0);
+
+  if (totalTapped <= 0) return 0;
+  return Math.floor(totalTapped * tier.stakeAmount * 0.8);
+}
+
+// Prize calc that picks the right source based on the tier's current phase.
+function calcPrizeForPhase(tier) {
+  if (tier.phase === 'picking') {
+    return calcSelectionEstimate(tier);
+  }
+  return calcEstimatedWin(tier.players.length, tier.stakeAmount);
+}
+
 function validateBingo(card, drawnNumbers) {
   const drawn = new Set(drawnNumbers);
   const hit = (val) => val === '★' || drawn.has(val);
@@ -140,6 +163,7 @@ function clearUserSelections(io, tier, userId) {
     gameId: tier.gameId,
     stakeAmount: tier.stakeAmount,
     selections: tier.selections,
+    estimatedWin: calcSelectionEstimate(tier),
   });
 }
 
@@ -171,6 +195,7 @@ function startPickingPhase(io, tier) {
     timeLeft: PICK_DURATION_S,
     stakeAmount: tier.stakeAmount,
     selections: {},
+    estimatedWin: 0,
   });
 
   tier.tickInterval = setInterval(() => {
@@ -193,7 +218,7 @@ function startPickingPhase(io, tier) {
       timeLeft: tier.timeLeft,
       stakeAmount: tier.stakeAmount,
       playerCount: tier.players.length,
-      estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
+      estimatedWin: calcPrizeForPhase(tier),
     });
 
     if (tier.timeLeft <= 0) {
@@ -392,7 +417,7 @@ function setupBingoSocket(io) {
         stakeAmount: tier.stakeAmount,
         timeLeft: tier.timeLeft,
         playerCount: tier.players.length,
-        estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
+        estimatedWin: calcPrizeForPhase(tier),
         drawnBalls: tier.drawnBalls,
         takenCards: tier.players.map((p) => p.cardNumber),
         selections: tier.selections,
@@ -413,7 +438,7 @@ function setupBingoSocket(io) {
         stakeAmount: tier.stakeAmount,
         timeLeft: tier.timeLeft,
         playerCount: tier.players.length,
-        estimatedWin: calcEstimatedWin(tier.players.length, tier.stakeAmount),
+        estimatedWin: calcPrizeForPhase(tier),
         drawnBalls: tier.drawnBalls,
         takenCards: tier.players.map((p) => p.cardNumber),
         selections: tier.selections,
@@ -459,6 +484,7 @@ function setupBingoSocket(io) {
         gameId: tier.gameId,
         stakeAmount: tier.stakeAmount,
         selections: tier.selections,
+        estimatedWin: calcSelectionEstimate(tier),
       });
     });
 

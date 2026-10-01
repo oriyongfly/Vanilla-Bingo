@@ -156,6 +156,15 @@ export default function Pick() {
       // Optionally show error to user
     };
 
+    socket.off('bingo:player_joined', handlePlayerJoined);
+    socket.off('bingo:room_info', handleRoomInfo);
+    socket.off('bingo:status', handleStatus);
+    socket.off('bingo:tick', handleTick);
+    socket.off('bingo:phase_changed', handlePhaseChanged);
+    socket.off('bingo:selections_updated', handleSelectionsUpdated);
+    socket.off('bingo:game_starting', handleGameStarting);
+    socket.off('bingo:error', handleError);
+
     socket.on('bingo:player_joined', handlePlayerJoined);
     socket.on('bingo:room_info', handleRoomInfo);
     socket.on('bingo:status', handleStatus);
