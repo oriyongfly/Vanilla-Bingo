@@ -12,6 +12,8 @@ const BALL_COLORS = {
   O: "#642e88",
 };
 
+const REDIRECT_DELAY_MS = 8000;
+
 function Ball({ ball }) {
   return (
     <div
@@ -162,13 +164,18 @@ export default function Game() {
   const [isGameOver, setIsGameOver] = useState(false);
   const [estimatedWin, setEstimatedWin] = useState(0);
 
+  // End-of-round dialog state
   const [winningDialog, setWinningDialog] = useState(false);
   const [winningPattern, setWinningPattern] = useState("");
   const [winningNumbers, setWinningNumbers] = useState([]);
   const [prizeAmount, setPrizeAmount] = useState(0);
+  const [winnerUserId, setWinnerUserId] = useState(null);
+  const [winnerCardNumber, setWinnerCardNumber] = useState(null);
+  const [noWinner, setNoWinner] = useState(false);
 
   const ballAnimationTimeout = useRef(null);
   const balloonTimeout = useRef(null);
+  const redirectTimeout = useRef(null);
 
   const drawCount = drawnBalls.length;
 
@@ -200,6 +207,13 @@ export default function Game() {
       return;
     }
 
+    const scheduleRedirect = () => {
+      if (redirectTimeout.current) return;
+      redirectTimeout.current = setTimeout(() => {
+        navigate('/bingo/pick', { state: { stakeAmount } });
+      }, REDIRECT_DELAY_MS);
+    };
+
     const handleRoomInfo = (data) => {
       setEstimatedWin(data.estimatedWin);
     };
@@ -219,24 +233,24 @@ export default function Game() {
       setCurrentBall(data.ball);
       if (data.estimatedWin != null) setEstimatedWin(data.estimatedWin);
       setBallVisible(false);
-      
+
       if (ballAnimationTimeout.current) {
         clearTimeout(ballAnimationTimeout.current);
       }
-      
+
       ballAnimationTimeout.current = setTimeout(() => {
         setBallVisible(true);
       }, 50);
-      
+
       const color = BALL_COLORS[data.ball.letter];
       setBalloonColor(
         `radial-gradient(ellipse at 40% 35%, ${color}44, rgba(80,40,120,.5) 100%)`
       );
-      
+
       if (balloonTimeout.current) {
         clearTimeout(balloonTimeout.current);
       }
-      
+
       balloonTimeout.current = setTimeout(() => {
         setBalloonColor("");
       }, 400);
@@ -245,24 +259,39 @@ export default function Game() {
     const handleWinner = (data) => {
       setIsGameOver(true);
       setPrizeAmount(data.prize);
-      
-      if (user?.telegramId === data.userId) {
-        setWinningPattern(data.pattern || 'BINGO!');
-        setWinningNumbers([]);
-        setWinningDialog(true);
-      }
-      // Whether winner or not, round_end will trigger navigation back
+      setWinnerUserId(data.userId ?? null);
+      setWinnerCardNumber(data.cardNumber ?? null);
+      setWinningPattern(data.pattern || 'BINGO!');
+      setWinningNumbers([]);
+      setNoWinner(false);
+
+      // Always show the dialog for every user — winner or observer
+      setWinningDialog(true);
+
+      // Auto-redirect after 8s regardless of dialog state
+      scheduleRedirect();
     };
 
-    const handleGameOver = (data) => {
+    const handleGameOver = () => {
       setIsGameOver(true);
+      setNoWinner(true);
+      setWinningPattern("");
+      setWinningNumbers([]);
+      setPrizeAmount(0);
+      setWinnerUserId(null);
+      setWinnerCardNumber(null);
+
+      setWinningDialog(true);
+      scheduleRedirect();
     };
 
-    const handleRoundEnd = (data) => {
-      // Navigate to pick screen so the user can join the next round
-      setTimeout(() => {
-        navigate('/bingo/pick', { state: { stakeAmount } });
-      }, 1000);
+    const handleRoundEnd = () => {
+      // Safety net — if the 8s timer hasn't fired yet, navigate immediately
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+        redirectTimeout.current = null;
+      }
+      navigate('/bingo/pick', { state: { stakeAmount } });
     };
 
     const handleError = (error) => {
@@ -287,12 +316,16 @@ export default function Game() {
       socket.off('bingo:game_over', handleGameOver);
       socket.off('bingo:round_end', handleRoundEnd);
       socket.off('bingo:error', handleError);
-      
+
       if (ballAnimationTimeout.current) {
         clearTimeout(ballAnimationTimeout.current);
       }
       if (balloonTimeout.current) {
         clearTimeout(balloonTimeout.current);
+      }
+      if (redirectTimeout.current) {
+        clearTimeout(redirectTimeout.current);
+        redirectTimeout.current = null;
       }
     };
   }, [navigate, stakeAmount, getSocket, user?.telegramId]);
@@ -303,6 +336,11 @@ export default function Game() {
     if (!socket) return;
     socket.emit('bingo:claim', { stakeAmount });
   };
+
+  const isWinner = user?.telegramId && winnerUserId === user.telegramId;
+
+  const minutes = Math.floor(0 / 60);
+  const seconds = 0;
 
   return (
     <>
@@ -537,7 +575,7 @@ export default function Game() {
             </div>
           </div>
 
-          {/* Winning Dialog */}
+          {/* End-of-Round Dialog (winner / observer / no-winner) */}
           {winningDialog && (
             <div
               className="
@@ -579,37 +617,69 @@ export default function Game() {
 
                 {/* Header */}
                 <header
-                  className="
+                  className={`
                     flex h-[60px] items-center justify-center
-                    border-b-2 border-[#e17010]
-                    bg-[linear-gradient(135deg,#f6c079,#e17010)]
+                    border-b-2
                     text-[1.1rem] font-bold text-white
-                  "
+                    ${
+                      noWinner
+                        ? "border-[#7c8cff] bg-[linear-gradient(135deg,#5a6be0,#7c8cff)]"
+                        : isWinner
+                        ? "border-[#e17010] bg-[linear-gradient(135deg,#f6c079,#e17010)]"
+                        : "border-[#e17010] bg-[linear-gradient(135deg,#f6c079,#e17010)]"
+                    }
+                  `}
                 >
-                  🎉 {winningPattern}
+                  {noWinner
+                    ? "😔 No Winner This Round"
+                    : isWinner
+                    ? `🎉 You Won! — ${winningPattern}`
+                    : `🏆 Winner! — ${winningPattern}`}
                 </header>
 
                 {/* Content */}
                 <div className="px-5 py-4 text-[.95rem] text-[#e17010]">
-                  <div className="mb-2">
-                    Winning Card{cards.length > 1 ? "s" : ""}
-                  </div>
+                  {noWinner ? (
+                    <p className="text-center text-[#7c8cff]">
+                      All 75 balls were drawn with no Bingo pattern completed.
+                      Better luck next round!
+                    </p>
+                  ) : isWinner ? (
+                    <>
+                      <div className="mb-2">
+                        Winning Card{cards.length > 1 ? "s" : ""}
+                      </div>
 
-                  <div className="flex w-full flex-col items-center gap-3">
-                    {cards.map((c, idx) => (
-                      <BingoCard
-                        key={cardNumbers[idx]}
-                        card={c}
-                        drawnNumbers={drawnBalls.map((b) => b.number)}
-                        winningNumbers={winningNumbers}
-                        winning
-                      />
-                    ))}
-                  </div>
+                      <div className="flex w-full flex-col items-center gap-3">
+                        {cards.map((c, idx) => (
+                          <BingoCard
+                            key={cardNumbers[idx]}
+                            card={c}
+                            drawnNumbers={drawnBalls.map((b) => b.number)}
+                            winningNumbers={winningNumbers}
+                            winning
+                          />
+                        ))}
+                      </div>
 
-                  <div className="mt-4">
-                    🏆 Prize: {prizeAmount} ETB
-                  </div>
+                      <div className="mt-4">
+                        🏆 Prize: {prizeAmount} ETB
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mb-2 text-[#7c8cff]">
+                        Cartela #{winnerCardNumber ?? "—"}
+                      </div>
+                      <p className="text-[#7c8cff]">
+                        A player completed a Bingo pattern this round. Watch
+                        for the next round to try again.
+                      </p>
+                      <div className="mt-4">
+                        🏆 Prize: {prizeAmount} ETB
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Footer */}

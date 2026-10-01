@@ -115,24 +115,26 @@ export default function Pick() {
 
     // Fires ~5s before the server flips to drawing phase. Emit one join per
     // selected card so the server registers all of them, then navigate.
+    // If nothing is selected, stay on Pick and wait for the next round.
     const handleGameStarting = () => {
       const currentNums = selectedNumsRef.current;
-      if (currentNums.length > 0) {
-        for (const num of currentNums) {
-          socket.emit('bingo:join', {
-            stakeAmount,
-            cardNumber: num,
-            card: getCard(num),
-          });
-        }
-        navigate('/bingo/game', {
-          state: { stakeAmount, cardNumbers: currentNums },
-        });
-      } else {
-        navigate('/bingo/game', {
-          state: { stakeAmount, spectator: true, drawnBalls: [] },
+
+      if (currentNums.length === 0) {
+        // No selection — stay on Pick and wait for the next round's
+        // bingo:game_starting event.
+        return;
+      }
+
+      for (const num of currentNums) {
+        socket.emit('bingo:join', {
+          stakeAmount,
+          cardNumber: num,
+          card: getCard(num),
         });
       }
+      navigate('/bingo/game', {
+        state: { stakeAmount, cardNumbers: currentNums },
+      });
     };
 
     const handleError = (error) => {
@@ -194,6 +196,10 @@ export default function Pick() {
 
   const timerDanger = timeLeft <= 10;
   const timerWarning = timeLeft <= 20 && timeLeft > 10;
+
+  // Show the "waiting" banner when the picking window has closed and the user
+  // still hasn't selected anything — they'll be carried into the next round.
+  const showWaitingBanner = !isGameActive && selectedNums.length === 0;
 
   return (
     <main
@@ -365,6 +371,24 @@ export default function Pick() {
               </p>
             )}
           </div>
+
+          {/* Waiting banner */}
+          {showWaitingBanner && (
+            <div
+              className="
+                mb-4
+                flex items-center justify-center gap-2
+                rounded-[12px]
+                border border-[rgba(124,140,255,0.25)]
+                bg-[rgba(124,140,255,0.08)]
+                px-3 py-2
+                text-[0.85rem] font-semibold text-[#a8b4ff]
+              "
+            >
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#7c8cff]" />
+              Waiting for next round…
+            </div>
+          )}
 
           {/* Number Grid */}
           <div

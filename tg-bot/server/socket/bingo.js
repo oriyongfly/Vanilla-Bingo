@@ -14,7 +14,7 @@
  *     - Server draws one ball every 2s, broadcasts bingo:ball_drawn
  *     - Auto-checks every player for a completed pattern after each ball
  *     - Players may also claim by emitting bingo:claim (fallback)
- *     - Winner found → broadcasts bingo:winner, waits 5s, starts new cycle
+ *     - Winner found → broadcasts bingo:winner (with cardNumber), waits 5s, starts new cycle
  *     - All 75 balls drawn with no winner → broadcasts bingo:game_over, waits 5s, starts new cycle
  *
  * On bingo:get_status → server responds with current phase, timeLeft, gameId, drawnBalls
@@ -255,9 +255,10 @@ function startDrawingPhase(io, tier) {
       for (const player of tier.players) {
         const result = validateBingo(player.card, drawnNumbers);
         if (result.valid) {
-          console.log(`🏆 [${tier.stakeAmount} ETB] Auto-detected ${result.pattern} for ${player.userId} — ending round`);
+          console.log(`🏆 [${tier.stakeAmount} ETB] Auto-detected ${result.pattern} for ${player.userId} (card #${player.cardNumber}) — ending round`);
           finishRound(io, tier, {
             userId: player.userId,
+            cardNumber: player.cardNumber,
             pattern: result.pattern,
             betBreakdown: player.betBreakdown,
           });
@@ -280,6 +281,7 @@ async function finishRound(io, tier, winnerInfo) {
   if (winnerInfo) {
     io.to(tier.tierChannel).emit('bingo:winner', {
       userId: winnerInfo.userId,
+      cardNumber: winnerInfo.cardNumber,
       pattern: winnerInfo.pattern,
       prize,
       gameId: tier.gameId,
@@ -298,7 +300,12 @@ async function finishRound(io, tier, winnerInfo) {
           type: 'win',
           amount: prize,
           status: 'completed',
-          metadata: { gameId: tier.gameId, pattern: winnerInfo.pattern, gameType: 'bingo' },
+          metadata: {
+            gameId: tier.gameId,
+            cardNumber: winnerInfo.cardNumber,
+            pattern: winnerInfo.pattern,
+            gameType: 'bingo',
+          },
         });
       }
     } catch (err) {
@@ -310,7 +317,11 @@ async function finishRound(io, tier, winnerInfo) {
         user: winnerInfo.userId,
         game: 'bingo',
         betAmount: tier.stakeAmount,
-        gridState: { gameId: tier.gameId, playerCount: tier.players.length },
+        gridState: {
+          gameId: tier.gameId,
+          cardNumber: winnerInfo.cardNumber,
+          playerCount: tier.players.length,
+        },
         spinResult: tier.drawnBalls,
         totalPayout: prize,
       });
@@ -526,7 +537,7 @@ function setupBingoSocket(io) {
           type: 'lose',
           amount: stakeAmount,
           status: 'completed',
-          metadata: { gameId: tier.gameId, gameType: 'bingo', note: 'stake' },
+          metadata: { gameId: tier.gameId, cardNumber, gameType: 'bingo', note: 'stake' },
         });
       } catch (err) {
         socket.emit('bingo:error', { message: err.message });
@@ -582,6 +593,7 @@ function setupBingoSocket(io) {
 
       finishRound(io, tier, {
         userId,
+        cardNumber: player.cardNumber,
         pattern: result.pattern,
         betBreakdown: player.betBreakdown,
       });
