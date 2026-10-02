@@ -6,7 +6,6 @@ export default function Header() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const firstName = user?.firstName || "Guest";
   const balance = user?.balance != null ? `ETB ${user.balance.toFixed(2)}` : "ETB 0.00";
   const points = user?.points ?? 0;
 
