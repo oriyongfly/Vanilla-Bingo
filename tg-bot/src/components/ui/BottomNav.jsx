@@ -2,9 +2,13 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import NavItem from './NavItem';
 
-function WalletIcon() {
+function PromoIcon() {
   return (
-    <span className="w-[22px] h-[16px] border-2 border-current rounded-[4px] relative after:content-[''] after:absolute after:w-[7px] after:h-[5px] after:border-2 after:border-current after:border-r-0 after:right-[-2px] after:top-[4px] after:rounded-[3px_0_0_3px]" />
+    <span className="w-[20px] h-[20px] relative">
+      <span className="absolute inset-0 border-2 border-current rounded-[3px]" />
+      <span className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 bg-current" />
+      <span className="absolute top-1/2 left-0 right-0 h-[2px] -translate-y-1/2 bg-current" />
+    </span>
   );
 }
 
@@ -33,18 +37,17 @@ export default function BottomNav() {
 
   const handleClick = (tab) => {
     if (tab === 'home') { navigate('/'); return; }
+    if (tab === 'promo') { navigate('/invite'); return; }
     if (tab === 'profile') { navigate('/profile'); return; }
     if (tab === 'leaderboard') { navigate('/leaderboard'); return; }
-    // wallet is a placeholder
-    alert('Wallet coming soon');
   };
 
   // Determine active tab from current path
   const path = location.pathname;
   const activeTab =
     path === '/' ? 'home' :
+    path === '/invite' ? 'promo' :
     path === '/profile' ? 'profile' :
-    path === '/wallet' ? 'wallet' :
     path === '/leaderboard' ? 'leaderboard' :
     '';
 
@@ -53,8 +56,8 @@ export default function BottomNav() {
       <NavItem tab="home" label="Home" active={activeTab === 'home'} onClick={handleClick}>
         ⌂
       </NavItem>
-      <NavItem tab="wallet" label="Wallet" active={activeTab === 'wallet'} onClick={handleClick}>
-        <WalletIcon />
+      <NavItem tab="promo" label="Promo" active={activeTab === 'promo'} onClick={handleClick}>
+        <PromoIcon />
       </NavItem>
       <NavItem tab="profile" label="Profile" active={activeTab === 'profile'} onClick={handleClick}>
         <ProfileNavIcon />

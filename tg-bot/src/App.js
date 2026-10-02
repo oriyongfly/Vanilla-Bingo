@@ -7,6 +7,7 @@ import BottomNav from './components/ui/BottomNav';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import LeaderboardPage from './pages/Leaderboard';
+import Invite from './pages/Invite';
 import Stake from './games/bingo/Stake';
 import Pick from './games/bingo/Pick';
 import Game from './games/bingo/Game';
@@ -62,6 +63,7 @@ function App() {
           <Route path="/bingo/game" element={<Game />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/invite" element={<Invite />} />
         </Route>
       </Routes>
     );
