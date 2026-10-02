@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useAuth } from "../context/AuthContext";
 import apiClient from "../utils/ApiClient";
+import { useAuth } from "../context/AuthContext";
 
 /*
  * Leaderboard.jsx
@@ -107,7 +107,11 @@ const formatPoints = (points) =>
 const getInitials = (name) => {
   const safeName = String(name || "User").trim() || "User";
   const parts = safeName.split(/\s+/);
-  if (parts.length === 1) return safeName.slice(0, 2).toUpperCase();
+
+  if (parts.length === 1) {
+    return safeName.slice(0, 2).toUpperCase();
+  }
+
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 };
 
@@ -134,7 +138,10 @@ const fetchLeaderboard = async (selectedDate) => {
 };
 
 const normalizePlayers = (data, currentUserId) => {
-  const apiPlayers = data?.leaderboard || data?.data?.leaderboard || [];
+  const apiPlayers =
+    data?.leaderboard ||
+    data?.data?.leaderboard ||
+    [];
 
   return apiPlayers.map((player) => {
     const name =
@@ -143,15 +150,17 @@ const normalizePlayers = (data, currentUserId) => {
       player.phone ||
       "User";
 
+    const playerId = String(player.user_id ?? player.id ?? "");
+
     return {
-      id: String(player.user_id ?? player.id ?? ""),
+      id: playerId,
       name,
       phone: player.phone ?? undefined,
       points: Number(player.total_points) || 0,
       prize: Number(player.reward) || 0,
       rank: Number(player.rank) || 0,
-      isCurrentUser: currentUserId != null &&
-        String(currentUserId) === String(player.user_id ?? player.id ?? ""),
+      isCurrentUser:
+        currentUserId != null && currentUserId === playerId,
     };
   });
 };
@@ -329,7 +338,8 @@ const PlayerRow = ({ player }) => (
 
 export default function Leaderboard() {
   const { user } = useAuth();
-  const currentUserId = user?.telegramId ?? null;
+  const currentUserId =
+    user?.telegramId != null ? String(user.telegramId) : null;
 
   const [period, setPeriod] = useState("today");
   const [players, setPlayers] = useState([]);
@@ -373,7 +383,7 @@ export default function Leaderboard() {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate]);
+  }, [selectedDate, currentUserId]);
 
   useEffect(() => {
     const updateCountdown = () => {
