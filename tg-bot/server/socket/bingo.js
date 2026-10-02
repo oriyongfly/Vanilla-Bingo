@@ -184,6 +184,7 @@ function startPickingPhase(io, tier) {
   tier.balls               = generateBalls();
   tier.drawnBalls          = [];
   tier.gameStartingEmitted = false;
+  tier.inGracePeriod       = false;
   tier.selections          = {};
   tier.userSelections      = {};
 
@@ -231,15 +232,18 @@ function startPickingPhase(io, tier) {
 function startDrawingPhase(io, tier) {
   clearTierTimers(tier);
 
-  // Flip the phase immediately so any bingo:join arriving during the grace
-  // period is correctly treated as a late join (spectator only, no deduction).
+  // Flip the phase immediately and mark grace period as open so bingo:join
+  // emits arriving during the 5s window are still accepted as real players.
   tier.phase = 'drawing';
+  tier.inGracePeriod = true;
 
   // Join grace period: give in-flight bingo:join emits a full 5 seconds to
   // land and complete their DB work before we decide whether this round has
   // any players at all. This window starts at the same moment the client's
   // 5-second wait begins, keeping both sides in sync.
   setTimeout(() => {
+    tier.inGracePeriod = false;
+
     if (tier.players.length === 0) {
       // No players — skip drawing, start new round immediately
       console.log(`⏭️  [${tier.stakeAmount} ETB] No players, skipping draw — starting new round`);
@@ -395,6 +399,7 @@ function setupBingoSocket(io) {
       tickInterval: null,
       drawInterval: null,
       gameStartingEmitted: false,
+      inGracePeriod: false,
       selections: {},
       userSelections: {},
     };
@@ -509,8 +514,8 @@ function setupBingoSocket(io) {
         return;
       }
 
-      // If drawing has already started, register as spectator only (no stake deducted)
-      if (tier.phase === 'drawing') {
+      // If drawing has already started and grace period is over, register as spectator only
+      if (tier.phase === 'drawing' && !tier.inGracePeriod) {
         socket.join(tier.tierChannel);
         socket.emit('bingo:room_info', {
           gameId: tier.gameId,
