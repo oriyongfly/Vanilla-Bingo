@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import { useSocket } from "../../context/SocketContext";
+import { useAuth } from "../../context/AuthContext";
 
 const stakeOptions = [
   { label: "5 Birr", amount: 5 },
@@ -10,9 +11,10 @@ const stakeOptions = [
 ];
 
 export default function Stake() {
-  const balance = 12450;
   const navigate = useNavigate();
   const { getSocket } = useSocket();
+  const { user } = useAuth();
+  const balance = user?.balance ?? 0;
   const statusListenerRef = useRef(null);
 
   const handleStake = (amount) => {
@@ -127,69 +129,78 @@ export default function Stake() {
               </label>
 
               {/* Stake Options */}
-              {stakeOptions.map((option) => (
-                <div
-                  key={option.amount}
-                  className="
-                    bg-[rgba(124,140,255,0.06)]
-                    border border-[rgba(124,140,255,0.12)]
-                    rounded-[14px]
-                    py-3 px-5
-                    flex
-                    justify-between
-                    items-center
-                    transition-all
-                    duration-200
-                    ease-in-out
-                    hover:border-[rgba(124,140,255,0.3)]
-                    hover:bg-[rgba(124,140,255,0.08)]
-                  "
-                >
-                  <span
-                    className="
-                      text-[rgba(255,255,255,0.8)]
-                      text-[1.1rem]
-                      font-medium
-                      max-[420px]:text-[0.95rem]
-                    "
-                  >
-                    {option.label}
-                  </span>
+              {stakeOptions.map((option) => {
+                const disabled = option.amount > balance;
 
-                  <button
-                    type="button"
-                    onClick={() => handleStake(option.amount)}
-                    className="
-                      px-6 py-[0.6rem]
-                      border-none
-                      rounded-[10px]
-                      text-[0.85rem]
-                      font-semibold
-                      cursor-pointer
+                return (
+                  <div
+                    key={option.amount}
+                    className={`
+                      bg-[rgba(124,140,255,0.06)]
+                      border border-[rgba(124,140,255,0.12)]
+                      rounded-[14px]
+                      py-3 px-5
+                      flex
+                      justify-between
+                      items-center
                       transition-all
                       duration-200
                       ease-in-out
-                      font-inherit
-                      tracking-[0.02em]
-                      min-w-[80px]
-                      text-white
-                      bg-gradient-to-br
-                      from-[#7c8cff]
-                      to-[#b47cff]
-                      shadow-[0_4px_15px_rgba(124,140,255,0.2)]
-                      hover:shadow-[0_6px_25px_rgba(124,140,255,0.35)]
-                      hover:-translate-y-px
-                      active:scale-[0.95]
-                      max-[420px]:px-4
-                      max-[420px]:py-2
-                      max-[420px]:text-[0.8rem]
-                      max-[420px]:min-w-[70px]
-                    "
+                      ${
+                        disabled
+                          ? "opacity-40 cursor-not-allowed"
+                          : "hover:border-[rgba(124,140,255,0.3)] hover:bg-[rgba(124,140,255,0.08)]"
+                      }
+                    `}
                   >
-                    Play
-                  </button>
-                </div>
-              ))}
+                    <span
+                      className="
+                        text-[rgba(255,255,255,0.8)]
+                        text-[1.1rem]
+                        font-medium
+                        max-[420px]:text-[0.95rem]
+                      "
+                    >
+                      {option.label}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => handleStake(option.amount)}
+                      disabled={disabled}
+                      className={`
+                        px-6 py-[0.6rem]
+                        border-none
+                        rounded-[10px]
+                        text-[0.85rem]
+                        font-semibold
+                        transition-all
+                        duration-200
+                        ease-in-out
+                        font-inherit
+                        tracking-[0.02em]
+                        min-w-[80px]
+                        text-white
+                        bg-gradient-to-br
+                        from-[#7c8cff]
+                        to-[#b47cff]
+                        shadow-[0_4px_15px_rgba(124,140,255,0.2)]
+                        max-[420px]:px-4
+                        max-[420px]:py-2
+                        max-[420px]:text-[0.8rem]
+                        max-[420px]:min-w-[70px]
+                        ${
+                          disabled
+                            ? "cursor-not-allowed"
+                            : "cursor-pointer hover:shadow-[0_6px_25px_rgba(124,140,255,0.35)] hover:-translate-y-px active:scale-[0.95]"
+                        }
+                      `}
+                    >
+                      Play
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </main>

@@ -4,6 +4,7 @@ import { useSocket } from "../../context/SocketContext";
 import { getCard } from "./Cards";
 
 const MAX_SELECTIONS = 4;
+const NAVIGATE_DELAY_MS = 5000;
 
 export default function Pick() {
   const location = useLocation();
@@ -27,7 +28,16 @@ export default function Pick() {
   const [estimatedWin, setEstimatedWin] = useState(0);
   const [takenCards, setTakenCards] = useState([]);
 
+  // True once we've emitted joins and are waiting out the 5-second window
+  // before navigating to the game page. Renders the overlay.
+  const [isStarting, setIsStarting] = useState(false);
+  const [startCountdown, setStartCountdown] = useState(
+    Math.ceil(NAVIGATE_DELAY_MS / 1000)
+  );
+
   const selectedNumsRef = useRef([]);
+  const navigateTimeoutRef = useRef(null);
+  const countdownIntervalRef = useRef(null);
 
   useEffect(() => {
     selectedNumsRef.current = selectedNums;
@@ -67,6 +77,21 @@ export default function Pick() {
     if (!socket || !stakeAmount) return;
     socket.emit('bingo:subscribe', { stakeAmount });
   }, [getSocket, stakeAmount]);
+
+  // Cleanup the navigate timer + countdown interval on unmount so a manual
+  // navigation during the 5s wait doesn't trigger a second navigate.
+  useEffect(() => {
+    return () => {
+      if (navigateTimeoutRef.current) {
+        clearTimeout(navigateTimeoutRef.current);
+        navigateTimeoutRef.current = null;
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   // Socket event listeners
   useEffect(() => {
@@ -128,10 +153,17 @@ export default function Pick() {
       }
     };
 
-    // Fires ~5s before the server flips to drawing phase. Emit one join per
-    // selected card so the server registers all of them, then navigate.
-    // If nothing is selected, stay on Pick and wait for the next round.
+    // Fires at timeLeft === 0 on the server, the same tick the drawing phase
+    // begins. Emit one join per selected card so the server registers all of
+    // them, then hold the user on an overlay for the 5s join-grace window
+    // before navigating to the game page.
+    //
+    // If nothing is selected, do nothing and stay on Pick — the user will be
+    // carried into the next round.
     const handleGameStarting = () => {
+      // Guard against double-firing (e.g. duplicate events)
+      if (isStarting) return;
+
       const currentNums = selectedNumsRef.current;
 
       if (currentNums.length === 0) {
@@ -140,6 +172,8 @@ export default function Pick() {
         return;
       }
 
+      // Emit all joins immediately so the server has the full 5s window to
+      // process them before the drawing phase checks player count.
       for (const num of currentNums) {
         socket.emit('bingo:join', {
           stakeAmount,
@@ -147,9 +181,26 @@ export default function Pick() {
           card: getCard(num),
         });
       }
-      navigate('/bingo/game', {
-        state: { stakeAmount, cardNumbers: currentNums },
-      });
+
+      setIsStarting(true);
+      setStartCountdown(Math.ceil(NAVIGATE_DELAY_MS / 1000));
+
+      // Countdown display, purely cosmetic — the actual navigate happens on
+      // the timeout below so the two stay in lockstep.
+      countdownIntervalRef.current = setInterval(() => {
+        setStartCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+
+      navigateTimeoutRef.current = setTimeout(() => {
+        navigateTimeoutRef.current = null;
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+        navigate('/bingo/game', {
+          state: { stakeAmount, cardNumbers: currentNums },
+        });
+      }, NAVIGATE_DELAY_MS);
     };
 
     const handleError = (error) => {
@@ -185,10 +236,10 @@ export default function Pick() {
       socket.off('bingo:game_starting', handleGameStarting);
       socket.off('bingo:error', handleError);
     };
-  }, [getSocket, navigate, stakeAmount]);
+  }, [getSocket, navigate, stakeAmount, isStarting]);
 
   const handleNumberClick = (number) => {
-    if (!isGameActive) return;
+    if (!isGameActive || isStarting) return;
     if (takenCards.includes(number)) return;
 
     const socket = getSocket();
@@ -229,7 +280,8 @@ export default function Pick() {
 
   // Show the "waiting" banner when the picking window has closed and the user
   // still hasn't selected anything — they'll be carried into the next round.
-  const showWaitingBanner = !isGameActive && selectedNums.length === 0;
+  const showWaitingBanner =
+    !isGameActive && selectedNums.length === 0 && !isStarting;
 
   return (
     <main
@@ -242,6 +294,7 @@ export default function Pick() {
         justify-center
         text-white
         font-[system-ui,-apple-system,'Segoe_UI',Roboto,'Helvetica_Neue',sans-serif]
+        relative
       "
     >
       <div
@@ -253,7 +306,7 @@ export default function Pick() {
         "
       >
         <div
-          className="
+          className={`
             bg-[rgba(255,255,255,0.03)]
             backdrop-blur-[12px]
             rounded-[24px]
@@ -262,7 +315,10 @@ export default function Pick() {
             border-[rgba(255,255,255,0.06)]
             shadow-[0_20px_60px_rgba(0,0,0,0.5)]
             max-[420px]:p-4
-          "
+            transition-opacity
+            duration-300
+            ${isStarting ? "pointer-events-none select-none opacity-40" : ""}
+          `}
         >
           {/* Top Bar */}
           <div
@@ -437,7 +493,7 @@ export default function Pick() {
               // Reserved by someone else — only matters if not our own selection
               const isReserved =
                 !isSelected && !isTaken && (reservedCards[number] || 0) > 0;
-              const isDisabled = !isGameActive || isTaken;
+              const isDisabled = !isGameActive || isTaken || isStarting;
 
               return (
                 <button
@@ -469,7 +525,7 @@ export default function Pick() {
                           cursor-not-allowed
                           line-through
                         `
-                        : !isGameActive
+                        : !isGameActive || isStarting
                         ? `
                           bg-[rgba(255,255,255,0.02)]
                           border-[rgba(255,255,255,0.03)]
@@ -530,7 +586,7 @@ export default function Pick() {
                     </span>
                   )}
 
-                  {!isGameActive && !isTaken && (
+                  {!isGameActive && !isTaken && !isStarting && (
                     <span
                       className="
                         absolute
@@ -616,6 +672,54 @@ export default function Pick() {
         </div>
       </div>
 
+      {/* Game Starting overlay */}
+      {isStarting && (
+        <div
+          className="
+            fixed inset-0 z-50
+            flex items-center justify-center
+            bg-[rgba(11,13,21,0.85)]
+            backdrop-blur-[6px]
+            animate-[fadeIn_0.25s_ease-out]
+          "
+        >
+          <div
+            className="
+              flex flex-col items-center gap-5
+              px-8 py-9
+              rounded-[24px]
+              border border-[rgba(124,140,255,0.18)]
+              bg-[rgba(255,255,255,0.04)]
+              shadow-[0_20px_60px_rgba(0,0,0,0.6)]
+              max-[420px]:px-6 max-[420px]:py-7
+            "
+          >
+            <div className="relative flex h-16 w-16 items-center justify-center">
+              <span className="absolute inset-0 rounded-full border-2 border-[rgba(124,140,255,0.15)]" />
+              <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#7c8cff] border-r-[#b47cff] animate-spin" />
+              <span className="text-[1.6rem] font-bold text-[#b47cff] tabular-nums">
+                {startCountdown}
+              </span>
+            </div>
+
+            <div className="text-center">
+              <p
+                className="
+                  text-[1.1rem] font-bold
+                  bg-gradient-to-br from-[#7c8cff] to-[#b47cff]
+                  bg-clip-text text-transparent
+                "
+              >
+                Game Starting…
+              </p>
+              <p className="mt-1 text-[0.8rem] text-[rgba(255,255,255,0.45)]">
+                Locking in your cartelas
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Pulse animation */}
       <style>{`
         @keyframes pulse {
@@ -626,6 +730,11 @@ export default function Pick() {
           50% {
             opacity: 0.4;
           }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </main>

@@ -7,8 +7,8 @@
  *     - Server broadcasts bingo:tick every second with timeLeft
  *     - Players select cards via bingo:select (live selection map broadcast)
  *     - Players join by emitting bingo:join at game_starting
- *     - At timeLeft = 5, server emits bingo:game_starting so clients can navigate
- *     - At timeLeft = 0, transitions to DRAWING phase (with 3s grace period)
+ *     - At timeLeft = 0, server emits bingo:game_starting so clients can navigate
+ *     - Immediately after, transitions to DRAWING phase (with 5s join grace period)
  *
  *   DRAWING phase:
  *     - Server draws one ball every 2s, broadcasts bingo:ball_drawn
@@ -37,7 +37,7 @@ const User = require('../models/user');
 const PICK_DURATION_S = 50;
 const DRAW_INTERVAL_MS = 2000;
 const ROUND_END_DELAY_MS = 5000;
-const DRAWING_GRACE_MS = 3000;
+const JOIN_GRACE_MS = 5000;
 
 const LETTERS = ['B', 'I', 'N', 'G', 'O'];
 const BALL_RANGES = [[1,15],[16,30],[31,45],[46,60],[61,75]];
@@ -201,16 +201,21 @@ function startPickingPhase(io, tier) {
   tier.tickInterval = setInterval(() => {
     tier.timeLeft -= 1;
 
-    // Five ticks before zero: announce the game is starting so clients have
-    // time to emit bingo:join before the drawing phase begins. Emitted exactly
-    // once per round.
-    if (tier.timeLeft === 5 && !tier.gameStartingEmitted) {
-      tier.gameStartingEmitted = true;
-      io.to(tier.tierChannel).emit('bingo:game_starting', {
-        gameId: tier.gameId,
-        stakeAmount: tier.stakeAmount,
-      });
-      console.log(`📣 [${tier.stakeAmount} ETB] bingo:game_starting emitted — ${tier.gameId}`);
+    // At zero: announce the game is starting so clients can navigate/join,
+    // then immediately begin the drawing phase. The emit goes out first so
+    // clients receive the signal at the exact moment the countdown ends.
+    if (tier.timeLeft <= 0) {
+      if (!tier.gameStartingEmitted) {
+        tier.gameStartingEmitted = true;
+        io.to(tier.tierChannel).emit('bingo:game_starting', {
+          gameId: tier.gameId,
+          stakeAmount: tier.stakeAmount,
+        });
+        console.log(`📣 [${tier.stakeAmount} ETB] bingo:game_starting emitted — ${tier.gameId}`);
+      }
+      clearTierTimers(tier);
+      startDrawingPhase(io, tier);
+      return;
     }
 
     io.to(tier.tierChannel).emit('bingo:tick', {
@@ -220,11 +225,6 @@ function startPickingPhase(io, tier) {
       playerCount: tier.players.length,
       estimatedWin: calcPrizeForPhase(tier),
     });
-
-    if (tier.timeLeft <= 0) {
-      clearTierTimers(tier);
-      startDrawingPhase(io, tier);
-    }
   }, 1000);
 }
 
@@ -235,8 +235,10 @@ function startDrawingPhase(io, tier) {
   // period is correctly treated as a late join (spectator only, no deduction).
   tier.phase = 'drawing';
 
-  // Grace period: give the last in-flight bingo:join emits a moment to land
-  // before we decide whether this round has any players at all.
+  // Join grace period: give in-flight bingo:join emits a full 5 seconds to
+  // land and complete their DB work before we decide whether this round has
+  // any players at all. This window starts at the same moment the client's
+  // 5-second wait begins, keeping both sides in sync.
   setTimeout(() => {
     if (tier.players.length === 0) {
       // No players — skip drawing, start new round immediately
@@ -291,7 +293,7 @@ function startDrawingPhase(io, tier) {
         }
       }
     }, DRAW_INTERVAL_MS);
-  }, DRAWING_GRACE_MS);
+  }, JOIN_GRACE_MS);
 }
 
 async function finishRound(io, tier, winnerInfo) {
@@ -574,7 +576,7 @@ function setupBingoSocket(io) {
       socket.join(tier.roomId);
 
       const playerCount = tier.players.length;
-      const estimatedWin = calcEstimatedWin(playerCount, stakeAmount);
+      const estimatedWin = calcPrizeForPhase(tier);
 
       socket.emit('bingo:room_info', {
         gameId: tier.gameId,
