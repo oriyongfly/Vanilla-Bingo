@@ -45,6 +45,51 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
+app.post('/api/admin/credit-all-users', async (req, res) => {
+  try {
+    const adminKey = req.headers['x-admin-key'];
+
+    if (!adminKey || adminKey !== process.env.ADMIN_CREDIT_KEY) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    const Wallet = require('./models/Wallet');
+
+    const users = await User.find({});
+    let credited = 0;
+
+    for (const user of users) {
+      const wallet = await Wallet.getOrCreate(user._id);
+
+      wallet.withdrawableBalance += 100;
+      await wallet.save();
+
+      credited++;
+
+      console.log(
+        `Credited 100 ETB to ${user.username || user.telegramId}`
+      );
+    }
+
+    return res.json({
+      success: true,
+      credited,
+      amountPerUser: 100
+    });
+
+  } catch (error) {
+    console.error('Credit-all-users error:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // Authentication — verify Telegram initData and issue JWT
 app.post('/api/auth/login', async (req, res) => {
   const { initData } = req.body;
