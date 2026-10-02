@@ -136,8 +136,8 @@ export default function Invite() {
 
     loadInviteData();
     return () => { cancelled = true; };
-  }, [user?.id, user?.referral_id]);
-
+  }, [user, user?.id, user?.referral_id]);
+  
   const handleCopyLink = async () => {
     if (!inviteLink) {
       showToast("Invite link not ready", "error");
