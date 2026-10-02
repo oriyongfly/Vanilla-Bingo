@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import LoadingScreen from './components/ui/LoadingScreen';
 import Header from './components/ui/Header';
+import BottomNav from './components/ui/BottomNav';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import Stake from './games/bingo/Stake';
@@ -10,19 +11,16 @@ import Pick from './games/bingo/Pick';
 import Game from './games/bingo/Game';
 import './App.css';
 
-// Layout wrapper that renders the Header above game flow pages.
-// HomePage is excluded because it manages its own Header + profile state.
-function GameLayout() {
-  const [profileOpen, setProfileOpen] = useState(false);
+// Shared layout — Header at top, BottomNav fixed at bottom, Outlet in between.
+// All authenticated routes use this layout.
+function AppLayout() {
   return (
     <div className="w-full min-h-screen flex flex-col bg-[#0d1019] text-white">
-      <Header
-        profileOpen={profileOpen}
-        onProfileToggle={() => setProfileOpen((o) => !o)}
-      />
-      <div className="flex-1">
+      <Header />
+      <div className="flex-1 pb-16">
         <Outlet />
       </div>
+      <BottomNav />
     </div>
   );
 }
@@ -56,8 +54,8 @@ function App() {
   if (isAuthenticated && user) {
     return (
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route element={<GameLayout />}>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<HomePage />} />
           <Route path="/bingo/stake" element={<Stake />} />
           <Route path="/bingo/pick" element={<Pick />} />
           <Route path="/bingo/game" element={<Game />} />

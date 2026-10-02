@@ -1,14 +1,14 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
-export default function Header({ profileOpen, onProfileToggle }) {
+export default function Header() {
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const firstName = user?.firstName || "Guest";
-  const phone = user?.phone || "No phone number";
   const balance = user?.balance != null ? `ETB ${user.balance.toFixed(2)}` : "ETB 0.00";
   const points = user?.points ?? 0;
-  const avatarInitial = firstName.charAt(0).toUpperCase();
 
   return (
     <header
@@ -37,12 +37,7 @@ export default function Header({ profileOpen, onProfileToggle }) {
         </div>
 
         {/* BALANCE + PROFILE BUTTON */}
-        <div
-          className={[
-            "relative z-[6] ml-auto mr-[10px] flex items-center gap-[7px]",
-            profileOpen ? "invisible pointer-events-none" : "",
-          ].join(" ")}
-        >
+        <div className="relative z-[6] ml-auto mr-[10px] flex items-center gap-[7px]">
           <div className="flex h-[27px] items-center whitespace-nowrap rounded-[20px] bg-gradient-to-r from-[#ffad00] to-[#ffbd18] px-3 text-[11px] font-extrabold text-[#090b10] shadow-[0_2px_8px_rgba(255,174,0,0.15)]">
             {balance}
             <span className="mx-[3px]">|</span>
@@ -52,8 +47,7 @@ export default function Header({ profileOpen, onProfileToggle }) {
           <button
             type="button"
             aria-label="Profile"
-            aria-expanded={profileOpen}
-            onClick={onProfileToggle}
+            onClick={() => navigate("/profile")}
             className="relative z-[9] flex h-[41px] min-w-[41px] w-[41px] cursor-pointer items-center justify-center overflow-hidden rounded-[11px] border border-[#29334d] bg-[#202940] transition-[width,border-radius,background] duration-[280ms] ease-in-out hover:bg-[#2a3452]"
           >
             <div className="relative h-[27px] w-[27px] shrink-0">
@@ -61,54 +55,6 @@ export default function Header({ profileOpen, onProfileToggle }) {
               <span className="absolute bottom-[2px] left-[2px] h-[13px] w-[23px] rounded-[50%_50%_8px_8px] bg-[#583087]" />
             </div>
           </button>
-        </div>
-      </div>
-
-      {/* EXPANDED PROFILE */}
-      <div
-        className={[
-          "absolute right-[14px] top-0 z-[5]",
-          "flex h-full w-[calc(100%-100px)] items-center gap-3",
-          "bg-[#090d17] px-3 py-[10px]",
-          "transition-[transform,opacity,visibility] duration-[280ms] ease-in-out",
-          profileOpen
-            ? "visible translate-x-0 opacity-100 pointer-events-auto"
-            : "invisible translate-x-5 opacity-0 pointer-events-none",
-        ].join(" ")}
-      >
-        {/* Avatar */}
-        <div className="flex h-[52px] min-w-[52px] w-[52px] items-center justify-center rounded-full bg-gradient-to-br from-[#5d3195] to-[#7b44b8] text-[20px] font-extrabold text-white">
-          {avatarInitial}
-        </div>
-
-        {/* User info */}
-        <div className="min-w-0 flex-1">
-          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[16px] font-extrabold text-white">
-            {firstName}
-          </div>
-
-          <div className="mt-[3px] whitespace-nowrap text-[12px] text-[#8b92a8]">
-            {phone}
-          </div>
-        </div>
-
-        {/* Account */}
-        <div className="min-w-[92px] text-right">
-          <div className="text-[9px] font-bold uppercase text-[#777f93]">
-            Balance
-          </div>
-
-          <div className="mt-[2px] text-[12px] font-extrabold text-[#ffad00]">
-            {balance}
-          </div>
-
-          <div className="mt-[5px] text-[9px] font-bold uppercase text-[#777f93]">
-            Points
-          </div>
-
-          <div className="mt-[2px] text-[12px] font-extrabold text-[#ffad00]">
-            {points}
-          </div>
         </div>
       </div>
     </header>
