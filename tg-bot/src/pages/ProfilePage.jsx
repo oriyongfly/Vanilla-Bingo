@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../utils/ApiClient';
 
@@ -47,16 +46,6 @@ function getTransactionIcon(type) {
     case 'bet':      return <span className="text-blue-400 text-lg">{icons.bet}</span>;
     case 'win':      return <span className="text-purple-400 text-lg">{icons.win}</span>;
     default:         return <span className="text-[#8f98a8] text-lg">{icons.wallet}</span>;
-  }
-}
-
-function getBenefitIcon(type) {
-  switch (type) {
-    case 'daily_cashback':  return <span className="text-green-400">{icons.cashback}</span>;
-    case 'daily_bonus':     return <span className="text-amber-400">{icons.gift}</span>;
-    case 'deposit_bonus':   return <span className="text-blue-400">{icons.dollar}</span>;
-    case 'priority_support': return <span className="text-purple-400">{icons.shield}</span>;
-    default:                return <span className="text-[#8f98a8]">{icons.sparkles}</span>;
   }
 }
 
@@ -114,7 +103,6 @@ function InlineSuccess({ message }) {
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   // ── Wallet state (refreshed after deposit/withdraw) ──
   const [wallet, setWallet] = useState({
