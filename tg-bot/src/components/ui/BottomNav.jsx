@@ -34,8 +34,9 @@ export default function BottomNav() {
   const handleClick = (tab) => {
     if (tab === 'home') { navigate('/'); return; }
     if (tab === 'profile') { navigate('/profile'); return; }
-    // wallet and leaderboard are placeholders
-    alert(tab === 'wallet' ? 'Wallet coming soon' : 'Leaderboard coming soon');
+    if (tab === 'leaderboard') { navigate('/leaderboard'); return; }
+    // wallet is a placeholder
+    alert('Wallet coming soon');
   };
 
   // Determine active tab from current path

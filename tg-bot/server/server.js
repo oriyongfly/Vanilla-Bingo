@@ -11,6 +11,7 @@ require('dotenv').config();
 const { initBot } = require('./bot');
 const { setupBingoSocket } = require('./socket/bingo');
 const walletRouter = require('./routes/Wallet');
+const statsRouter = require('./routes/Stats');
 const User = require('./models/user');
 
 const app = express();
@@ -48,6 +49,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/wallet', walletRouter);
+app.use('/api/stat', statsRouter);
 
 app.post('/api/admin/credit-all-users', async (req, res) => {
   try {
