@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/ui/Header";
 import GameGrid from "../components/ui/GameGrid";
 import NavItem from "../components/ui/NavItem";
@@ -29,6 +30,7 @@ function LeaderboardIcon() {
 }
 
 export default function HomePage({ user }) {
+  const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
 
@@ -41,7 +43,8 @@ export default function HomePage({ user }) {
     }
 
     if (tab === "profile") {
-      setProfileOpen(true);
+      setProfileOpen(false);
+      navigate("/profile");
       return;
     }
 

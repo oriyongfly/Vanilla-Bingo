@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
@@ -9,6 +10,7 @@ require('dotenv').config();
 
 const { initBot } = require('./bot');
 const { setupBingoSocket } = require('./socket/bingo');
+const walletRouter = require('./routes/Wallet');
 const User = require('./models/user');
 
 const app = express();
@@ -44,6 +46,8 @@ app.use(express.json());
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
+
+app.use('/api/wallet', walletRouter);
 
 app.post('/api/admin/credit-all-users', async (req, res) => {
   try {

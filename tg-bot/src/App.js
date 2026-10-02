@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import LoadingScreen from './components/ui/LoadingScreen';
 import Header from './components/ui/Header';
 import HomePage from './pages/HomePage';
+import ProfilePage from './pages/ProfilePage';
 import Stake from './games/bingo/Stake';
 import Pick from './games/bingo/Pick';
 import Game from './games/bingo/Game';
@@ -60,6 +61,7 @@ function App() {
           <Route path="/bingo/stake" element={<Stake />} />
           <Route path="/bingo/pick" element={<Pick />} />
           <Route path="/bingo/game" element={<Game />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
       </Routes>
     );
