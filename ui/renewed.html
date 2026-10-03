@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bingo Game</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    min-height: 100vh;
+    background:
+        linear-gradient(160deg, #1a0850 0%, #2a0c60 45%, #1a0850 100%);
+    font-family: Arial, Helvetica, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #ffffdd;
+}
+
+/* Main game container */
+.game {
+    width: 100%;
+    max-width: 410px;
+    min-height: 100vh;
+    background: #0b0d15;
+    padding: 10px 6px 8px;
+    border: 6px solid #111;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+
+/* ---------------- HEADER ---------------- */
+
+.header {
+    display: grid;
+    grid-template-columns: 1.45fr 1fr 0.9fr 1.15fr 1fr;
+    gap: 5px;
+    height: 44px;
+}
+
+.info-box {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 8px;
+    padding: 3px 7px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.info-title {
+    font-size: 11px;
+    font-weight: bold;
+    color: rgba(255,255,255,.65);
+}
+
+.info-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: #ffffdd;
+    margin-top: 2px;
+}
+
+/* ---------------- CONTENT ---------------- */
+
+.content {
+    display: grid;
+    grid-template-columns: 174px 1fr;
+    gap: 6px;
+    margin-top: 7px;
+}
+
+/* ---------------- BINGO BOARD ---------------- */
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.letter {
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 13px;
+    margin-bottom: 1px;
+    color: white;
+}
+
+/* Exact B/I/N/G/O palette from Game.jsx */
+.letter.b { background: #008ed6; }
+.letter.i { background: #83d100; }
+.letter.n { background: #e17000; }
+.letter.g { background: #a71906; }
+.letter.o { background: #642e88; }
+
+.number {
+    height: 27px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: rgba(255,255,255,.85);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.number:hover {
+    background: rgba(255,255,255,.14);
+}
+
+/* Drawn/called number — purple Game.jsx treatment */
+.number.called {
+    background: linear-gradient(135deg, #7c8cff, #b47cff);
+    border-color: #7c8cff;
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 8px 30px rgba(124,140,255,.30);
+}
+
+/* Current called number — gold/orange Game.jsx treatment */
+.number.current-called {
+    background: rgba(255,180,60,.06);
+    border-color: rgba(255,180,60,.4);
+    color: rgba(255,200,110,.95);
+    cursor: pointer;
+}
+
+.number.current-called:hover {
+    background: rgba(255,180,60,.12);
+    border-color: rgba(255,180,60,.55);
+}
+
+.number.current-called:active {
+    transform: scale(.95);
+}
+
+/* ---------------- RIGHT PANEL ---------------- */
+
+.right {
+    min-width: 0;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 31px;
+}
+
+.ball-history {
+    border-radius: 20px;
+    padding: 6px 11px;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    color: white;
+}
+
+.ball-history.blue {
+    background: #008ed6;
+}
+
+.ball-history.purple {
+    background: #642e88;
+}
+
+.ball-history.light {
+    background: #7c8cff;
+}
+
+.sound {
+    margin-left: auto;
+    font-size: 20px;
+}
+
+/* Current ball panel */
+.current-ball {
+    height: 96px;
+    margin-top: 4px;
+    border-radius: 8px;
+    background:
+        radial-gradient(
+            ellipse at 40% 35%,
+            rgba(255,255,255,.15) 0%,
+            rgba(180,160,220,.10) 40%,
+            rgba(80,40,120,.50) 100%
+        );
+    border: 1px solid rgba(255,255,255,.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Main bingo ball */
+.ball {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background:
+        radial-gradient(
+            circle at 35% 25%,
+            #ffffff,
+            #f3f3f3 45%,
+            #d5d5d5 100%
+        );
+    border: 3px solid #ffd700;
+    box-shadow:
+        0 0 25px rgba(255,215,0,.35),
+        inset 0 0 12px rgba(0,0,0,.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #642e88;
+    font-size: 19px;
+    font-weight: 900;
+}
+
+/* Automatic switch */
+.auto-container {
+    margin-top: 5px;
+    height: 25px;
+    border-radius: 18px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.10);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding-right: 7px;
+}
+
+.switch {
+    width: 40px;
+    height: 20px;
+    border-radius: 20px;
+    background: #13975e;
+    position: relative;
+    box-shadow: 0 0 10px rgba(19,151,94,.25);
+}
+
+.switch::after {
+    content: "";
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: #777c88;
+    position: absolute;
+    right: 1px;
+    top: 1px;
+}
+
+/* Watching panel — compact 5×5 bingo card */
+.watching {
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    margin-top: 5px;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid rgba(255,255,255,.22);
+    box-shadow: 0 3px 12px rgba(0,0,0,.28);
+    text-align: center;
+}
+
+.watch-card-header {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 5px 8px;
+    color: #ffffdd;
+    background: #0b0d15;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+    font-size: clamp(18px, 2vw, 27px);
+    line-height: 1;
+    font-weight: 900;
+}
+
+.watch-ticket {
+    color: #ffd84d;
+    font-size: .95em;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.3));
+}
+
+.watch-card {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    padding: 3px;
+    background: #fff;
+}
+
+.watch-cell {
+    min-width: 0;
+    aspect-ratio: 1.28 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,.95);
+    background: #f5deb2;
+    color: #111;
+    font-size: clamp(11px, 1.3vw, 16px);
+    font-weight: 800;
+    line-height: 1;
+}
+
+.watch-cell:nth-child(-n+5) {
+    aspect-ratio: 1.45 / 1;
+    color: #fff;
+    font-size: clamp(11px, 1.2vw, 15px);
+}
+
+.watch-cell.b { background: #008ed6; }
+.watch-cell.i { background: #83d100; }
+.watch-cell.n { background: #e17000; }
+.watch-cell.g { background: #a71906; }
+.watch-cell.o { background: #642e88; }
+
+.watch-cell.called {
+    border: 1px solid #e17000;
+    border-radius: 50% / 48%;
+    background: radial-gradient(
+        ellipse at 50% 115%,
+        #f6c079 0%,
+        #f6a15f 24%,
+        #ed3450 72%,
+        #c9163c 100%
+    );
+    box-shadow: inset 0 1px 2px rgba(255,255,255,.25);
+}
+
+.watch-cell.free {
+    background: #fff8dc;
+    font-size: 15px;
+}
+
+@media (max-width: 560px) {
+    .watching {
+        max-width: 100%;
+    }
+    .watch-card-header {
+        min-height: 36px;
+    }
+    .watch-cell {
+        font-size: clamp(10px, 2.6vw, 14px);
+    }
+}
+
+/* ---------------- FOOTER ---------------- */
+
+.footer {
+    display: grid;
+    grid-template-columns: 84px 94px 1fr;
+    gap: 8px;
+    margin-top: 7px;
+}
+
+.btn {
+    height: 40px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    color: white;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.leave {
+    background: linear-gradient(90deg, #ff525e, #ff6b00);
+}
+
+.refresh {
+    background: linear-gradient(135deg, #7c8cff, #642e88);
+    color: white;
+}
+
+.automatic {
+    background: linear-gradient(90deg, #ffd700, #ff6b00);
+    color: white;
+}
+
+.btn:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+
+.btn:active {
+    transform: scale(.97);
+}
+
+/* ---------------- BALL COLORS ---------------- */
+
+/* These classes allow the HTML ball to visually match Game.jsx */
+.ball-b {
+    background:
+        radial-gradient(circle at 35% 25%,
+            #76deef,
+            #008ed6 45%,
+            #062745 100%);
+}
+
+.ball-i {
+    background:
+        radial-gradient(circle at 35% 25%,
+            #c3ec81,
+            #83d100 45%,
+            #3a5c00 100%);
+}
+
+.ball-n {
+    background:
+        radial-gradient(circle at 35% 25%,
+            #f6c079,
+            #e17000 45%,
+            #7a3800 100%);
+}
+
+.ball-g {
+    background:
+        radial-gradient(circle at 35% 25%,
+            #e35a45,
+            #a71906 45%,
+            #4a0000 100%);
+}
+
+.ball-o {
+    background:
+        radial-gradient(circle at 35% 25%,
+            #8f4ad2,
+            #642e88 45%,
+            #2a0045 100%);
+}
+
+/* ---------------- MOBILE ---------------- */
+
+@media (max-width: 360px) {
+    .game {
+        border-width: 4px;
+        border-radius: 18px;
+    }
+
+    .content {
+        grid-template-columns: 160px 1fr;
+    }
+
+    .header {
+        gap: 3px;
+    }
+
+    .info-box {
+        padding: 3px 4px;
+    }
+
+    .info-title {
+        font-size: 9px;
+    }
+
+    .info-value {
+        font-size: 12px;
+    }
+
+    .number {
+        height: 25px;
+    }
+
+    .current-ball {
+        height: 88px;
+    }
+
+    .ball {
+        width: 56px;
+        height: 56px;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="game">
+
+    <!-- HEADER -->
+    <div class="header">
+
+        <div class="info-box">
+            <span class="info-title">Game ID</span>
+            <span class="info-value">BBD49BXV</span>
+        </div>
+
+        <div class="info-box">
+            <span class="info-title">Players</span>
+            <span class="info-value">588</span>
+        </div>
+
+        <div class="info-box">
+            <span class="info-title">Bet</span>
+            <span class="info-value">10</span>
+        </div>
+
+        <div class="info-box">
+            <span class="info-title">Derash</span>
+            <span class="info-value">4704</span>
+        </div>
+
+        <div class="info-box">
+            <span class="info-title">Called</span>
+            <span class="info-value">3</span>
+        </div>
+
+    </div>
+
+
+    <!-- MAIN CONTENT -->
+    <div class="content">
+
+        <!-- BINGO BOARD -->
+        <div class="board">
+
+            <!-- B -->
+            <div class="column">
+                <div class="letter b">B</div>
+                <div class="number">1</div>
+                <div class="number">2</div>
+                <div class="number">3</div>
+                <div class="number">4</div>
+                <div class="number">5</div>
+                <div class="number">6</div>
+                <div class="number">7</div>
+                <div class="number">8</div>
+                <div class="number">9</div>
+                <div class="number">10</div>
+                <div class="number">11</div>
+                <div class="number">12</div>
+                <div class="number">13</div>
+                <div class="number current-called">14</div>
+                <div class="number">15</div>
+            </div>
+
+            <!-- I -->
+            <div class="column">
+                <div class="letter i">I</div>
+                <div class="number">16</div>
+                <div class="number">17</div>
+                <div class="number">18</div>
+                <div class="number">19</div>
+                <div class="number">20</div>
+                <div class="number">21</div>
+                <div class="number called">22</div>
+                <div class="number">23</div>
+                <div class="number">24</div>
+                <div class="number">25</div>
+                <div class="number">26</div>
+                <div class="number">27</div>
+                <div class="number">28</div>
+                <div class="number">29</div>
+                <div class="number">30</div>
+            </div>
+
+            <!-- N -->
+            <div class="column">
+                <div class="letter n">N</div>
+                <div class="number">31</div>
+                <div class="number">32</div>
+                <div class="number">33</div>
+                <div class="number">34</div>
+                <div class="number">35</div>
+                <div class="number">36</div>
+                <div class="number">37</div>
+                <div class="number">38</div>
+                <div class="number">39</div>
+                <div class="number">40</div>
+                <div class="number">41</div>
+                <div class="number">42</div>
+                <div class="number">43</div>
+                <div class="number">44</div>
+                <div class="number">45</div>
+            </div>
+
+            <!-- G -->
+            <div class="column">
+                <div class="letter g">G</div>
+                <div class="number called">46</div>
+                <div class="number">47</div>
+                <div class="number">48</div>
+                <div class="number">49</div>
+                <div class="number">50</div>
+                <div class="number">51</div>
+                <div class="number">52</div>
+                <div class="number">53</div>
+                <div class="number">54</div>
+                <div class="number">55</div>
+                <div class="number">56</div>
+                <div class="number current-called">57</div>
+                <div class="number">58</div>
+                <div class="number">59</div>
+                <div class="number">60</div>
+            </div>
+
+            <!-- O -->
+            <div class="column">
+                <div class="letter o">O</div>
+                <div class="number current-called">61</div>
+                <div class="number">62</div>
+                <div class="number">63</div>
+                <div class="number">64</div>
+                <div class="number">65</div>
+                <div class="number">66</div>
+                <div class="number">67</div>
+                <div class="number">68</div>
+                <div class="number">69</div>
+                <div class="number">70</div>
+                <div class="number">71</div>
+                <div class="number">72</div>
+                <div class="number">73</div>
+                <div class="number">74</div>
+                <div class="number">75</div>
+            </div>
+
+        </div>
+
+
+        <!-- RIGHT SIDE -->
+        <div class="right">
+
+            <div class="controls">
+                <div class="ball-history blue">G-57</div>
+                <div class="ball-history purple">I-22</div>
+                <div class="ball-history light">B-14</div>
+                <div class="sound">🔊</div>
+            </div>
+
+            <div class="current-ball">
+                <div class="ball ball-b" id="currentBall">B-14</div>
+            </div>
+
+            <div class="auto-container">
+                <div class="switch"></div>
+            </div>
+
+            <div class="watching" aria-label="Bingo card being watched">
+                <div class="watch-card-header">
+                    <span class="watch-ticket" aria-hidden="true">🎟</span>
+                    <span>#45</span>
+                </div>
+                <div class="watch-card" role="table" aria-label="Bingo card 45">
+                    <div class="watch-cell b" role="columnheader">B</div>
+                    <div class="watch-cell i" role="columnheader">I</div>
+                    <div class="watch-cell n" role="columnheader">N</div>
+                    <div class="watch-cell g" role="columnheader">G</div>
+                    <div class="watch-cell o" role="columnheader">O</div>
+
+                    <div class="watch-cell">3</div>
+                    <div class="watch-cell called">22</div>
+                    <div class="watch-cell called">41</div>
+                    <div class="watch-cell">58</div>
+                    <div class="watch-cell">67</div>
+
+                    <div class="watch-cell">9</div>
+                    <div class="watch-cell called">18</div>
+                    <div class="watch-cell">44</div>
+                    <div class="watch-cell called">49</div>
+                    <div class="watch-cell">71</div>
+
+                    <div class="watch-cell called">5</div>
+                    <div class="watch-cell called">28</div>
+                    <div class="watch-cell free">★</div>
+                    <div class="watch-cell called">52</div>
+                    <div class="watch-cell called">63</div>
+
+                    <div class="watch-cell">12</div>
+                    <div class="watch-cell">17</div>
+                    <div class="watch-cell">39</div>
+                    <div class="watch-cell called">55</div>
+                    <div class="watch-cell">74</div>
+
+                    <div class="watch-cell">1</div>
+                    <div class="watch-cell">25</div>
+                    <div class="watch-cell">31</div>
+                    <div class="watch-cell">47</div>
+                    <div class="watch-cell called">69</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- FOOTER -->
+    <div class="footer">
+
+        <button class="btn leave">
+            Leave
+        </button>
+
+        <button class="btn refresh" onclick="location.reload()">
+            ↻ Refresh
+        </button>
+
+        <button class="btn automatic">
+            Automatic
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+/* Make bingo numbers clickable */
+document.querySelectorAll(".number").forEach(number => {
+
+    number.addEventListener("click", () => {
+
+        number.classList.toggle("active");
+
+    });
+
+});
+
+
+/* Automatic button */
+document.querySelector(".automatic").addEventListener("click", () => {
+
+    const numbers = [...document.querySelectorAll(".number")];
+
+    const available = numbers.filter(
+        number => !number.classList.contains("called")
+    );
+
+    const pool = available.length ? available : numbers;
+
+    const randomNumber =
+        pool[Math.floor(Math.random() * pool.length)];
+
+    randomNumber.classList.add("called");
+
+    /* Update the demo current ball using the same B/I/N/G/O palette
+       and gradients used by Game.jsx. */
+    const value = Number(randomNumber.textContent);
+    let letter = "O";
+
+    if (value >= 1 && value <= 15) letter = "B";
+    else if (value >= 16 && value <= 30) letter = "I";
+    else if (value >= 31 && value <= 45) letter = "N";
+    else if (value >= 46 && value <= 60) letter = "G";
+
+    const currentBall = document.querySelector("#currentBall");
+
+    if (currentBall) {
+        currentBall.classList.remove(
+            "ball-b",
+            "ball-i",
+            "ball-n",
+            "ball-g",
+            "ball-o"
+        );
+
+        currentBall.classList.add(`ball-${letter.toLowerCase()}`);
+        currentBall.textContent = `${letter}-${value}`;
+    }
+
+});
+
+</script>
+
+</body>
+</html>
