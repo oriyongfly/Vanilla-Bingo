@@ -12,7 +12,7 @@ export default function Header() {
   return (
     <header
       className={[
-        "relative z-10 h-[102px] min-h-[102px] overflow-hidden",
+        "relative z-10 h-[90px] min-h-[90px] overflow-hidden",
         "border-b border-[#161a24] bg-[#090d17]",
         "px-[14px] pt-[12px] pb-[8px]",
       ].join(" ")}
