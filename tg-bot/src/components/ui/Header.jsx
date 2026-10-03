@@ -20,15 +20,15 @@ export default function Header() {
       <div className="relative z-[4] flex h-full w-full items-center justify-between">
         {/* LOGO */}
         <div className="relative z-[8] flex h-[76px] min-w-[76px] w-[76px] items-center justify-center bg-[#090d17]">
-          <div className="relative text-center font-black leading-[0.9] -rotate-2">
+          <div className="relative text-center font-black leading-[0.9] -rotate-2 font-['Noto_Sans_Ethiopic','Noto_Sans',sans-serif]">
             <div className="absolute left-[25px] top-[-18px] h-[25px] w-[25px] rounded-full border-[3px] border-[#ffc000]">
               <span className="absolute left-[6px] top-[6px] h-[7px] w-[7px] rounded-full bg-[#4c2a94]" />
             </div>
-            <div className="text-[18px] tracking-[-1px] text-[#f4a900]">
-              FETAN
+            <div className="text-[17px] tracking-[-1px] text-[#f4a900]">
+              ቤጉማ
             </div>
-            <div className="text-[18px] tracking-[-1px] text-[#ffad00]">
-              BINGO
+            <div className="text-[17px] tracking-[-1px] text-[#ffad00]">
+              ቢንጎ
             </div>
           </div>
         </div>
