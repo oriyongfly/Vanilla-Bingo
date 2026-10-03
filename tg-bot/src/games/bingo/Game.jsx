@@ -217,39 +217,6 @@ function WatchCard({ card, cardNumber, drawnNumbers, winningNumbers = [] }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Ball — kept as dead code (no longer used in-game)                  */
-/* ------------------------------------------------------------------ */
-
-function Ball({ ball }) {
-  return (
-    <div
-      className="relative h-[34px] w-[34px] shrink-0 rounded-full border border-black/30
-        before:absolute before:inset-[2px] before:z-[2] before:rounded-full
-        before:bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,.4),rgba(255,255,255,0)_65%)]
-        before:content-['']"
-      style={{
-        background:
-          ball.letter === "B"
-            ? "radial-gradient(circle at 35% 25%, #76deef, #008ed6 45%, #062745 100%)"
-            : ball.letter === "I"
-              ? "radial-gradient(circle at 35% 25%, #c3ec81, #83d100 45%, #3a5c00 100%)"
-              : ball.letter === "N"
-                ? "radial-gradient(circle at 35% 25%, #f6c079, #e17000 45%, #7a3800 100%)"
-                : ball.letter === "G"
-                  ? "radial-gradient(circle at 35% 25%, #e35a45, #a71906 45%, #4a0000 100%)"
-                  : "radial-gradient(circle at 35% 25%, #8f4ad2, #642e88 45%, #2a0045 100%)",
-      }}
-    >
-      <div className="relative z-[1] mx-auto mt-[22%] flex h-[55%] w-[55%] items-center justify-center rounded-full bg-white/85">
-        <span className="text-[0.55rem] font-bold text-black">
-          {ball.number}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  BingoCard — kept for the winner dialog only (full table view)      */
 /* ------------------------------------------------------------------ */
 
