@@ -344,6 +344,8 @@ export default function Game() {
   const [balloonColor, setBalloonColor] = useState("");
   const [isGameOver, setIsGameOver] = useState(false);
   const [estimatedWin, setEstimatedWin] = useState(0);
+  const [gameId, setGameId] = useState("");
+  const [playerCount, setPlayerCount] = useState(0);
 
   // End-of-round dialog state
   const [winningDialog, setWinningDialog] = useState(false);
@@ -397,16 +399,21 @@ export default function Game() {
 
     const handleRoomInfo = (data) => {
       setEstimatedWin(data.estimatedWin);
+      setGameId(data.gameId);
+      setPlayerCount(data.playerCount);
     };
 
     const handleStatus = (data) => {
       if (data?.estimatedWin != null) {
         setEstimatedWin(data.estimatedWin);
       }
+      setGameId(data.gameId);
+      setPlayerCount(data.playerCount);
     };
 
     const handlePlayerJoined = (data) => {
       setEstimatedWin(data.estimatedWin);
+      setPlayerCount(data.playerCount);
     };
 
     const handleBallDrawn = (data) => {
@@ -565,11 +572,11 @@ export default function Game() {
               <div className="grid grid-cols-[1.45fr_1fr_0.9fr_1.15fr_1fr] gap-[5px] h-[44px] max-[420px]:gap-[3px]">
                 <div className="info-box">
                   <span className="info-title">Game ID</span>
-                  <span className="info-value">BBD49BXV</span>
+                  <span className="info-value">{gameId || "—"}</span>
                 </div>
                 <div className="info-box">
                   <span className="info-title">Players</span>
-                  <span className="info-value">588</span>
+                  <span className="info-value">{playerCount}</span>
                 </div>
                 <div className="info-box">
                   <span className="info-title">Bet</span>
